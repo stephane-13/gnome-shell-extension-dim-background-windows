@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="dim-background-windows@stephane-13.github.com">
+  <schema id="org.gnome.shell.extensions.dim-background-windows" path="/org/gnome/shell/extensions/dim-background-windows/">
+    <key name="brightness" type="d">
+      <default>0.8</default>
+      <summary>Brightness %</summary>
+      <description>Set the brightness factor - 100% for no reduction to 10% for very dark background windows.</description>
+    </key>
+    <key name="saturation" type="d">
+      <default>0.8</default>
+      <summary>Saturation %</summary>
+      <description>Set the saturation factor - 100% for no reduction to 0% for full grayscale.</description>
+    </key>
+  </schema>
+</schemalist>
