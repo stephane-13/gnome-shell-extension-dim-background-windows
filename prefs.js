@@ -1,7 +1,6 @@
 'use strict';
 
 const ExtensionUtils = imports.misc.extensionUtils;
-//const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 //const {Adw, Gtk, Gio} = imports.gi; // Prepared for next version
 
@@ -9,6 +8,28 @@ const gtkGridOptions = { column_spacing: 10, row_spacing: 5, visible: true };
 const gtkGridMargin =  { margin_top: 5, margin_bottom: 5, margin_start: 5, margin_end: 5 };
 
 function init() { }
+
+// A function used to validate the text entered in the shortcut key editor field
+function validateToggleKey( settings, toggleKeyEntry, toggleKeyStatusLabel ) {
+    // Get the shortcut key entered in the editor field
+    let shortcutText = toggleKeyEntry.get_text();
+    // If the shortcut text is empty, consider that we want no shortcut
+    if( shortcutText === '' ) {
+        settings.set_strv( 'toggle-shortcut', [] );
+        toggleKeyStatusLabel.set_markup( '<i><small>No shortcut defined.</small></i>' );
+    // If the shortcut text is not empty, try to parse it
+    } else {
+        const [success, key, mods] = Gtk.accelerator_parse( shortcutText );
+        if( success && Gtk.accelerator_valid( key, mods ) ) {
+            const shortcut = Gtk.accelerator_name( key, mods );
+            settings.set_strv( 'toggle-shortcut', [shortcut] );
+            toggleKeyStatusLabel.set_markup( '<i><small>The shortcut above is <b>valid</b>.</small></i>' );
+        } else {
+            settings.set_strv( 'toggle-shortcut', [] );
+            toggleKeyStatusLabel.set_markup( '<i><small>The shortcut above is <b>invalid</b>.</small></i>' );
+        }
+    }
+}
 
 function buildPrefsWidget() {
     // Get the extension settings
@@ -31,7 +52,6 @@ function buildPrefsWidget() {
         settings.set_double( 'brightness', widget.get_value() );
     });
     prefsWidget.attach( brightnessSlider, 1, 0, 1, 1 );
-    //settings.bind( 'brightness', brightnessSlider.adjustment, 'value', Gio.SettingsBindFlags.DEFAULT );
 
     // Create a saturation label and slider
     let saturationLabel = new Gtk.Label( { label: 'Saturation:', halign: Gtk.Align.START, visible: true } );
@@ -48,7 +68,36 @@ function buildPrefsWidget() {
         settings.set_double( 'saturation', widget.get_value() );
     });
     prefsWidget.attach( saturationSlider, 1, 1, 1, 1 );
-    //settings.bind( 'saturation', saturationSlider.adjustment, 'value', Gio.SettingsBindFlags.DEFAULT );
+
+    // Create a toggle shortcut editor control
+    let toggleKeyLabel = new Gtk.Label( { label: 'Dimming effect toggle shortcut:', halign: Gtk.Align.START, visible: true } );
+    prefsWidget.attach( toggleKeyLabel, 0, 2, 1, 1 );
+    let toggleKeyEntry = new Gtk.Entry( { visible: true } );
+    // Set the entry text to the current value
+    let shortcut = settings.get_strv( 'toggle-shortcut' )[0];
+    // If the shortcut string is undefined, set it to an empty string
+    if( typeof shortcut === 'undefined' ) {
+        shortcut = '';
+    }
+    toggleKeyEntry.set_text( shortcut );
+    // Make the entry use the window width
+    toggleKeyEntry.set_hexpand( true );
+
+    // Add a shortcut key status label to show if the shortcut is valid or not
+    let toggleKeyStatusLabel = new Gtk.Label( { label: '', halign: Gtk.Align.START, visible: true, use_markup: true } );
+
+    // Add a note on how to use the shortcut editor field
+    let toggleKeyHelpLabel = new Gtk.Label( { label: '<i><small>Examples: "&lt;Super&gt;g", "&lt;Ctrl&gt;&lt;Super&gt;g" (without quotes)</small></i>', halign: Gtk.Align.START, visible: true, use_markup: true } );
+
+    // Make the entry act on the actual value
+    toggleKeyEntry.connect( 'changed', function ( _widget ) { validateToggleKey( settings, toggleKeyEntry, toggleKeyStatusLabel ); } );
+
+    // Validate the shortcut key editor field
+    validateToggleKey( settings, toggleKeyEntry, toggleKeyStatusLabel );
+
+    prefsWidget.attach( toggleKeyEntry, 1, 2, 1, 1 );
+    prefsWidget.attach( toggleKeyStatusLabel, 1, 3, 1, 1 );
+    prefsWidget.attach( toggleKeyHelpLabel, 1, 4, 1, 1 );
 
     // Return the built preferences widget
     return prefsWidget;

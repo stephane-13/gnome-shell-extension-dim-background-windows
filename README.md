@@ -1,4 +1,4 @@
-# Gnome Shell Extension - Dim Background Windows
+# Gnome Shell Extension- Dim Background Windows - Version 5
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
@@ -21,10 +21,12 @@ I found this one, which seems old and not maintained anymore (but might still wo
 To install the extension, visit its page on the official Gnome Extensions page:
 > https://extensions.gnome.org/extension/6313/dim-background-windows/
 
-To install the extension manually, one can download the zip file and execute:
+To install the latest development version of the extension manually, one can download the zip file available above and execute:
 ```
 gnome-extensions install dim-background-windows@stephane-13.github.com.shell-extension.zip
 ```
+Please note that the latest code in this repository might be pending validation on extensions.gnome.org, which has the latest stable version.
+The code in the main branch is considered stable, but not yet ready for production until it's been validated by extensions.gnome.org.
 
 To package the extension locally - for example to test a code patch - clone this git repository and execute:
 ```
@@ -33,6 +35,10 @@ gnome-extensions pack .
 This will generate the zip file above, which can then be installed (use the --force flag if a previous version of the extension is already installed).
 Logout / login is usually required to see the code changes effect.
 
+# Versions History
+
+- Version 5 : Implemented configurable shortcut to toggle the dimming effect. Currently available on extensions.gnome.org.
+- Version 4 : First validated version.
+
 # License
 This software comes with no license. Use at your own risk. Reuse / modify / distribute it without any restriction.
-
