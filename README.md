@@ -1,4 +1,4 @@
-# Gnome Shell Extension- Dim Background Windows - Version 5
+# Gnome Shell Extension- Dim Background Windows - Version 6
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
@@ -9,7 +9,7 @@ Gnome versions 42 to 44 should be supported.
 
 This extension shouldn't conflict with any other extension.
 It simply adds an effect - a GLSL fragment shader - to alter the brightness and saturation of background windows.
-It reacts on new window and focus events and doesn't do anything outside of those events.
+It reacts on window creation and focus events as well as when the overview is shown or hidden. It doesn't do anything outside of those events.
 
 # Similar Extensions
 
@@ -37,7 +37,8 @@ Logout / login is usually required to see the code changes effect.
 
 # Versions History
 
-- Version 5 : Implemented configurable shortcut to toggle the dimming effect. Currently available on extensions.gnome.org.
+- Version 6 : Disabled dimming effect in overview mode. Latest version, available on extensions.gnome.org.
+- Version 5 : Implemented configurable shortcut to toggle the dimming effect.
 - Version 4 : First validated version.
 
 # License
