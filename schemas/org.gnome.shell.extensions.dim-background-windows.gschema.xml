@@ -11,5 +11,15 @@
       <summary>Saturation %</summary>
       <description>Set the saturation factor - 100% for no reduction to 0% for full grayscale.</description>
     </key>
+    <key type="as" name="toggle-shortcut">
+      <default><![CDATA[['<Super>g']]]></default>
+      <summary>Dimming toggle key</summary>
+      <description>Shortcut key to toggle the background windows dimming on or off.</description>
+    </key>
+    <key type="b" name="dimming-enabled">
+      <default>true</default>
+      <summary>Dimming effect status</summary>
+      <description>Control if the dimming effect is on or off while the extension is enabled. Used with the shortcut key above.</description>
+    </key>
   </schema>
 </schemalist>

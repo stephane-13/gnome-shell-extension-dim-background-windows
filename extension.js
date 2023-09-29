@@ -1,6 +1,7 @@
 const Meta = imports.gi.Meta;
 const GObject = imports.gi.GObject;
-//const Main = imports.ui.main;
+const Main = imports.ui.main;
+const Shell = imports.gi.Shell;
 //const Config = imports.misc.config;
 const Clutter = imports.gi.Clutter;
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -9,6 +10,7 @@ const ExtensionUtils = imports.misc.extensionUtils;
 let settings = null;
 // An object to store the listener for new windows later
 let on_window_created = null;
+let on_toggle_key = null;
 
 // The dim effect object
 const DimWindowEffect = new GObject.registerClass(
@@ -89,8 +91,8 @@ function enable() {
             if( ! is_dimmable( meta_window ) ) {
                 return;
             }
-            // Does the window have the focus?
-            if( meta_window.has_focus() ) {
+            // Does the window have the focus, or is the extension internally toggled off?
+            if( meta_window.has_focus() || settings.get_boolean( 'dimming-enabled' ) === false ) {
                 // Do we have the dim effect?
                 if( window_actor.get_effect( 'dim' ) ) {
                     // Remove the brightness update event listener
@@ -141,6 +143,23 @@ function enable() {
         target_window._on_focus = target_window.connect( 'focus', on_focus );
     }
 
+    // Enable the dimming effect, which could have been previsouly disabled by the keyboard shortcut
+    settings.set_boolean( 'dimming-enabled', true );
+
+    // Create a global keybinding to toggle the extension dimming effect
+    Main.wm.addKeybinding( 'toggle-shortcut', settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, function () {
+        settings.set_boolean( 'dimming-enabled', ! settings.get_boolean( 'dimming-enabled' ) );
+        processWindows();
+    });
+    // Need a listener to update the keybinding when it is changed in the preferences window
+    on_toggle_key = settings.connect( 'changed::toggle-shortcut', function () {
+        Main.wm.removeKeybinding( 'toggle-shortcut' );
+        Main.wm.addKeybinding( 'toggle-shortcut', settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, function () {
+            settings.set_boolean( 'dimming-enabled', ! settings.get_boolean( 'dimming-enabled' ) );
+            processWindows();
+        });
+    });
+
     // Create a global display listener to react to new window events
     on_window_created = global.display.connect( 'window-created', window_created );
 
@@ -153,7 +172,16 @@ function disable() {
     // Destroy the listener for new windows
     if( on_window_created ) {
         global.display.disconnect( on_window_created );
+        on_window_created = null;
     }
+
+    // Remove the toggle shortcut and its listener
+    Main.wm.removeKeybinding( 'toggle-shortcut' );
+    if( on_toggle_key ) {
+        settings.disconnect( on_toggle_key );
+        on_toggle_key = null;
+    }
+
     // Loop on each window
     global.get_window_actors().forEach( function ( window_actor ) {
         const meta_window = window_actor.get_meta_window();
