@@ -10,6 +10,8 @@ const ExtensionUtils = imports.misc.extensionUtils;
 let settings = null;
 // An object to store the listener for new windows later
 let on_window_created = null;
+let on_shown_overview = null;
+let on_hidden_overview = null;
 let on_toggle_key = null;
 
 // The dim effect object
@@ -91,8 +93,9 @@ function enable() {
             if( ! is_dimmable( meta_window ) ) {
                 return;
             }
-            // Does the window have the focus, or is the extension internally toggled off?
-            if( meta_window.has_focus() || settings.get_boolean( 'dimming-enabled' ) === false ) {
+            // Does the window have the focus, or is the extension internally toggled off, or is the overview visible?
+            // In these cases, we don't want the dim effect
+            if( meta_window.has_focus() || settings.get_boolean( 'dimming-enabled' ) === false || Main.overview.visible ) {
                 // Do we have the dim effect?
                 if( window_actor.get_effect( 'dim' ) ) {
                     // Remove the brightness update event listener
@@ -163,6 +166,14 @@ function enable() {
     // Create a global display listener to react to new window events
     on_window_created = global.display.connect( 'window-created', window_created );
 
+    // Add a listener to react to the overview being shown/hidden
+    on_shown_overview = Main.overview.connect( 'shown', function () {
+        processWindows();
+    });
+    on_hidden_overview = Main.overview.connect( 'hidden', function () {
+        processWindows();
+    });
+
     // Process all existing windows when the extension is enabled
     processWindows();
 }
@@ -173,6 +184,16 @@ function disable() {
     if( on_window_created ) {
         global.display.disconnect( on_window_created );
         on_window_created = null;
+    }
+
+    // Destroy the listeners for the overview
+    if( on_shown_overview ) {
+        Main.overview.disconnect( on_shown_overview );
+        on_shown_overview = null;
+    }
+    if( on_hidden_overview ) {
+        Main.overview.disconnect( on_hidden_overview );
+        on_hidden_overview = null;
     }
 
     // Remove the toggle shortcut and its listener
