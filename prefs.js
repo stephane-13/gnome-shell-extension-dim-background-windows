@@ -99,6 +99,35 @@ function buildPrefsWidget() {
     prefsWidget.attach( toggleKeyStatusLabel, 1, 3, 1, 1 );
     prefsWidget.attach( toggleKeyHelpLabel, 1, 4, 1, 1 );
 
+    // Create a dropdown that lets the user choose whether to apply the dimming effect on all monitors, only the primary monitor, or only the focused monitor
+    let monitorLabel = new Gtk.Label( { label: 'Apply the dimming effect to:', halign: Gtk.Align.START, visible: true } );
+    prefsWidget.attach( monitorLabel, 0, 5, 1, 1 );
+    let monitorComboBox = new Gtk.ComboBoxText( { visible: true } );
+    monitorComboBox.append( 'all', 'All monitors' );
+    monitorComboBox.append( 'primary', 'The primary monitor only' );
+    monitorComboBox.append( 'secondary', 'The secondary monitor(s) only' );
+    // Set the current value
+    monitorComboBox.set_active_id( settings.get_string( 'target-monitor' ) );
+    // Make the dropdown use the window width
+    monitorComboBox.set_hexpand( true );
+    // Make the dropdown act on the actual value
+    monitorComboBox.connect( 'changed', function ( widget ) {
+        settings.set_string( 'target-monitor', widget.get_active_id() );
+    });
+    prefsWidget.attach( monitorComboBox, 1, 5, 1, 1 );
+
+    // Create a toggle switch to enable or disable the dimming effect for windows marked as "always on top"
+    let alwaysOnTopLabel = new Gtk.Label( { label: "Apply the dimming effect to\nwindows marked as \"always on top\":", halign: Gtk.Align.START, visible: true } );
+    prefsWidget.attach( alwaysOnTopLabel, 0, 6, 1, 1 );
+    let alwaysOnTopSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+    // Set the switch value to the current value
+    alwaysOnTopSwitch.set_active( settings.get_boolean( 'dim-always-on-top' ) );
+    // Make the switch act on the actual value
+    alwaysOnTopSwitch.connect( 'notify::active', function ( widget ) {
+        settings.set_boolean( 'dim-always-on-top', widget.active );
+    });
+    prefsWidget.attach( alwaysOnTopSwitch, 1, 6, 1, 1 );
+
     // Return the built preferences widget
     return prefsWidget;
 }
