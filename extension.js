@@ -13,6 +13,8 @@ let on_window_created = null;
 let on_shown_overview = null;
 let on_hidden_overview = null;
 let on_toggle_key = null;
+let on_target_monitor_change = null;
+let on_always_on_top_change = null;
 
 // The dim effect object
 const DimWindowEffect = new GObject.registerClass(
@@ -93,9 +95,21 @@ function enable() {
             if( ! is_dimmable( meta_window ) ) {
                 return;
             }
-            // Does the window have the focus, or is the extension internally toggled off, or is the overview visible?
-            // In these cases, we don't want the dim effect
-            if( meta_window.has_focus() || settings.get_boolean( 'dimming-enabled' ) === false || Main.overview.visible ) {
+            /* We don't want to dim the window if any of those conditions are met:
+                * the window has the focus
+                * the extension is internally toggled off
+                * the overview is visible
+                * the window is on the primary monitor and the extension is configured to dim only windows on secondary monitors
+                * the window is on a secondary monitor and the extension is configured to dim only windows on the primary monitor
+                * the window is marked as "always on top" and the extension is configured to not dim those windows
+            */
+            if( meta_window.has_focus() ||
+                settings.get_boolean( 'dimming-enabled' ) === false ||
+                Main.overview.visible ||
+                ( settings.get_string( 'target-monitor' ) === 'primary' && meta_window.is_on_primary_monitor() === 0 ) ||
+                ( settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() !== 0 ) ||
+                ( settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() )
+            ) {
                 // Do we have the dim effect?
                 if( window_actor.get_effect( 'dim' ) ) {
                     // Remove the brightness update event listener
@@ -115,7 +129,7 @@ function enable() {
                         delete window_actor._effect;
                     }
                 }
-            // The window doesn't have the focus
+            // None of the above conditions are met, so we want to dim the window
             } else {
                 // Don't we have the dim effect?
                 if( ! window_actor.get_effect( 'dim' ) ) {
@@ -162,6 +176,15 @@ function enable() {
             processWindows();
         });
     });
+    // Add a listener to react on the target monitor type change
+    on_target_monitor_change = settings.connect( 'changed::target-monitor', function () {
+        processWindows();
+    });
+
+    // Add a listener to react to the always-on-top setting change
+    on_always_on_top_change = settings.connect( 'changed::dim-always-on-top', function () {
+        processWindows();
+    });
 
     // Create a global display listener to react to new window events
     on_window_created = global.display.connect( 'window-created', window_created );
@@ -194,6 +217,18 @@ function disable() {
     if( on_hidden_overview ) {
         Main.overview.disconnect( on_hidden_overview );
         on_hidden_overview = null;
+    }
+
+    // Destroy the listener for the target monitor type change
+    if( on_target_monitor_change ) {
+        settings.disconnect( on_target_monitor_change );
+        on_target_monitor_change = null;
+    }
+
+    // Destroy the listener for the always-on-top setting change
+    if( on_always_on_top_change ) {
+        settings.disconnect( on_always_on_top_change );
+        on_always_on_top_change = null;
     }
 
     // Remove the toggle shortcut and its listener

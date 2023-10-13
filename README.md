@@ -1,4 +1,4 @@
-# Gnome Shell Extension- Dim Background Windows - Version 6
+# Gnome Shell Extension- Dim Background Windows - Version 7
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
@@ -37,7 +37,9 @@ Logout / login is usually required to see the code changes effect.
 
 # Versions History
 
-- Version 6 : Disabled dimming effect in overview mode. Latest version, available on extensions.gnome.org.
+- Version 7 : Added an option to apply the dimming effect only to the primary monitor, only to the secondary monitor(s) or to all monitors.
+              Also added an option to enable or disable the dimming effect for windows marked as always on top.
+- Version 6 : Disabled dimming effect in overview mode.
 - Version 5 : Implemented configurable shortcut to toggle the dimming effect.
 - Version 4 : First validated version.
 
