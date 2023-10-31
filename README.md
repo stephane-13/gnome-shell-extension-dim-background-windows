@@ -1,11 +1,11 @@
-# Gnome Shell Extension- Dim Background Windows - Version 7
+# Gnome Shell Extension- Dim Background Windows - Version 7 for Gnome 45
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
 # Compatibility
 
-This extension has only been tested on Ubuntu 22.04 using Gnome / Wayland.
-Gnome versions 42 to 44 should be supported.
+This extension has only been tested on Ubuntu 23.10 using Gnome / Wayland.
+Gnome version 45 should be supported.
 
 This extension shouldn't conflict with any other extension.
 It simply adds an effect - a GLSL fragment shader - to alter the brightness and saturation of background windows.
