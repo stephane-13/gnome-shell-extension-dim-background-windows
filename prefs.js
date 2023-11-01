@@ -160,11 +160,41 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
             settings.set_boolean( 'dim-always-on-top', widget.active );
         }));
         const alwaysOnTopRow = new Adw.ActionRow({
-            title: _( 'Apply the dimming effect to windows marked as "always on top":' ),
-            subtitle: _( 'Set the display(s) affected by the dimming effect' )
+            title: _( 'Apply the dimming effect to windows marked as "always on top":' )
+            //subtitle: _( '' )
         });
         alwaysOnTopRow.add_suffix( alwaysOnTopSwitch );
         group.add( alwaysOnTopRow );
+
+        // Create a toggle switch to enable or disable the dimming effect for maximized windows
+        let maximizedSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        maximizedSwitch.set_active( settings.get_boolean( 'dim-maximized' ) );
+        // Make the switch act on the actual value
+        maximizedSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'dim-maximized', widget.active );
+        }));
+        const maximizedRow = new Adw.ActionRow({
+            title: _( 'Apply the dimming effect to maximized windows:' ),
+            subtitle: _( 'This applies to fully maximized - horizontally and vertically - windows' )
+        });
+        maximizedRow.add_suffix( maximizedSwitch );
+        group.add( maximizedRow );
+
+        // Create a toggle switch to enable or disable the dimming effect for tiled windows
+        let tiledSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        tiledSwitch.set_active( settings.get_boolean( 'dim-tiled' ) );
+        // Make the switch act on the actual value
+        tiledSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'dim-tiled', widget.active );
+        }));
+        const tiledRow = new Adw.ActionRow({
+            title: _( 'Apply the dimming effect to tiled windows:' ),
+            subtitle: _( 'This applies to tiled - left, right, top or bottom - windows' )
+        });
+        tiledRow.add_suffix( tiledSwitch );
+        group.add( tiledRow );
     }
 
 }

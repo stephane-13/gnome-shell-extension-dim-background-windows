@@ -31,5 +31,15 @@
       <summary>Allowing dimming of windows marked as always on top</summary>
       <description>Control if the dimming effect is on or off for windows marked as always on top.</description>
     </key>
+    <key name="dim-maximized" type="b">
+      <default>true</default>
+      <summary>Allowing dimming of maximized windows</summary>
+      <description>Control if the dimming effect is on or off for maximized windows.</description>
+    </key>
+    <key name="dim-tiled" type="b">
+      <default>true</default>
+      <summary>Allowing dimming of tiled windows</summary>
+      <description>Control if the dimming effect is on or off for tiled windows.</description>
+    </key>
   </schema>
 </schemalist>
