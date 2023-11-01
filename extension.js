@@ -52,14 +52,19 @@ export default class DimBackgroundWindowsExtension extends Extension {
     // The function called when the extension is enabled
     enable() {
 
-        // An object to store the extension settings later
-        this.settings = null;
-        // An object to store the listener for new windows later
+        // Get the extension settings
+        this.settings = this.getSettings();
+        // An object to store the listener for new windows
         this.on_window_created = null;
+        // An object to store the listener for the overview being shown
         this.on_shown_overview = null;
+        // An object to store the listener for the overview being hidden
         this.on_hidden_overview = null;
+        // An object to store the listener for the toggle shortcut change
         this.on_toggle_key = null;
+        // An object to store the listener for the target monitor type change
         this.on_target_monitor_change = null;
+        // An object to store the listener for the always-on-top setting change
         this.on_always_on_top_change = null;
 
         // Get the extension settings
