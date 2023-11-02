@@ -1,4 +1,4 @@
-# Gnome Shell Extension- Dim Background Windows - Version 7 for Gnome 45
+# Gnome Shell Extension- Dim Background Windows - Version 9 for Gnome 45
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
@@ -36,12 +36,14 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
-
-- Version 7 : Added an option to apply the dimming effect only to the primary monitor, only to the secondary monitor(s) or to all monitors.
-              Also added an option to enable or disable the dimming effect for windows marked as always on top.
-- Version 6 : Disabled dimming effect in overview mode.
-- Version 5 : Implemented configurable shortcut to toggle the dimming effect.
-- Version 4 : First validated version.
+- Version 10 : Gnome 42 to 44 - Added options to control the dimming effect on maximized and tiled windows
+- Version  9 : Gnome 45       - Added options to control the dimming effect on maximized and tiled windows
+- Version  8 : identical to version 7, but for Gnome 45
+- Version  7 : Added an option to apply the dimming effect only to the primary monitor, only to the secondary monitor(s) or to all monitors.
+               Also added an option to enable or disable the dimming effect for windows marked as always on top.
+- Version  6 : Disabled dimming effect in overview mode.
+- Version  5 : Implemented configurable shortcut to toggle the dimming effect.
+- Version  4 : First validated version.
 
 # License
 This software comes with no license. Use at your own risk. Reuse / modify / distribute it without any restriction.

@@ -52,18 +52,24 @@ export default class DimBackgroundWindowsExtension extends Extension {
     // The function called when the extension is enabled
     enable() {
 
-        // An object to store the extension settings later
-        this.settings = null;
-        // An object to store the listener for new windows later
-        this.on_window_created = null;
-        this.on_shown_overview = null;
-        this.on_hidden_overview = null;
-        this.on_toggle_key = null;
-        this.on_target_monitor_change = null;
-        this.on_always_on_top_change = null;
-
         // Get the extension settings
         this.settings = this.getSettings();
+        // An object to store the listener for new windows
+        this.on_window_created = null;
+        // An object to store the listener for the overview being shown
+        this.on_shown_overview = null;
+        // An object to store the listener for the overview being hidden
+        this.on_hidden_overview = null;
+        // An object to store the listener for the toggle shortcut change
+        this.on_toggle_key = null;
+        // An object to store the listener for the target monitor type change
+        this.on_target_monitor_change = null;
+        // An object to store the listener for the always-on-top setting change
+        this.on_always_on_top_change = null;
+        // An object to store the listener for the maximized windows setting change
+        this.on_maximized_windows_change = null;
+        // An object to store the listener for the tiled windows setting change
+        this.on_tiled_windows_change = null;
 
         // Enable the dimming effect, which could have been previsouly disabled by the keyboard shortcut
         this.settings.set_boolean( 'dimming-enabled', true );
@@ -88,6 +94,16 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
         // Add a listener to react to the always-on-top setting change
         this.on_always_on_top_change = this.settings.connect( 'changed::dim-always-on-top', (() => {
+            this._processWindows();
+        }));
+
+        // Add a listener to react to the maximized windows setting change
+        this.on_maximized_windows_change = this.settings.connect( 'changed::dim-maximized', (() => {
+            this._processWindows();
+        }));
+
+        // Add a listener to react to the tiled windows setting change
+        this.on_tiled_windows_change = this.settings.connect( 'changed::dim-tiled', (() => {
             this._processWindows();
         }));
 
@@ -135,6 +151,18 @@ export default class DimBackgroundWindowsExtension extends Extension {
         if( this.on_always_on_top_change ) {
             this.settings.disconnect( this.on_always_on_top_change );
             this.on_always_on_top_change = null;
+        }
+
+        // Destroy the listener for the maximized windows setting change
+        if( this.on_maximized_windows_change ) {
+            this.settings.disconnect( this.on_maximized_windows_change );
+            this.on_maximized_windows_change = null;
+        }
+
+        // Destroy the listener for the tiled windows setting change
+        if( this.on_tiled_windows_change ) {
+            this.settings.disconnect( this.on_tiled_windows_change );
+            this.on_tiled_windows_change = null;
         }
 
         // Remove the toggle shortcut and its listener
@@ -189,10 +217,11 @@ export default class DimBackgroundWindowsExtension extends Extension {
         );
     }
 
-    // Process all windows to add/remove the dim effect based on their focus state
+    // Process all windows to add/remove the dim effect
     _processWindows() {
 
-	// Loop on all windows
+        // Loop on all windows
+        // eslint-disable-next-line complexity
         global.get_window_actors().forEach( ( window_actor ) => {
 
             const meta_window = window_actor.get_meta_window();
@@ -214,13 +243,31 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 * the window is on the primary monitor and the extension is configured to dim only windows on secondary monitors
                 * the window is on a secondary monitor and the extension is configured to dim only windows on the primary monitor
                 * the window is marked as "always on top" and the extension is configured to not dim those windows
+                * the window is maximized and the extension is configured to not dim those windows
+                * the window is tiled and the extension is configured to not dim those windows - note: the tiling status is not exposed to extensions, so we use the work area to determine if the window is tiled - this will be less hackish when this is implemented: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1395
             */
             if( meta_window.has_focus() ||
                 this.settings.get_boolean( 'dimming-enabled' ) === false ||
                 Main.overview.visible ||
                 ( this.settings.get_string( 'target-monitor' ) === 'primary' && meta_window.is_on_primary_monitor() === 0 ) ||
                 ( this.settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() !== 0 ) ||
-                ( this.settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() )
+                ( this.settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() ) ||
+                ( this.settings.get_boolean( 'dim-maximized' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.BOTH ) ||
+                ( this.settings.get_boolean( 'dim-tiled' ) === false && ! meta_window.get_maximized() &&
+                    (
+                        (
+                            meta_window.get_frame_rect().height === meta_window.get_work_area_current_monitor().height && (
+                                meta_window.get_frame_rect().x === meta_window.get_work_area_current_monitor().x ||
+                                meta_window.get_frame_rect().x - ( meta_window.get_work_area_current_monitor().x + meta_window.get_work_area_current_monitor().width / 2 ) <= 1
+                            )
+                        ) || (
+                            meta_window.get_frame_rect().width === meta_window.get_work_area_current_monitor().width && (
+                                meta_window.get_frame_rect().y === meta_window.get_work_area_current_monitor().y ||
+                                meta_window.get_frame_rect().y - ( meta_window.get_work_area_current_monitor().x + meta_window.get_work_area_current_monitor().height / 2 ) <= 1
+                            )
+                        )
+                    )
+                )
             ) {
                 // Do we have the dim effect?
                 if( window_actor.get_effect( 'dim' ) ) {
