@@ -8,13 +8,24 @@ const ExtensionUtils = imports.misc.extensionUtils;
 
 // An object to store the extension settings later
 let settings = null;
-// An object to store the listener for new windows later
+// An object to store the listener for new windows
 let on_window_created = null;
+// An object to store the listener for the overview being shown
 let on_shown_overview = null;
+// An object to store the listener for the overview being hidden
 let on_hidden_overview = null;
+// An object to store the listener for the toggle shortcut change
 let on_toggle_key = null;
+// An object to store the listener for the target monitor type change
 let on_target_monitor_change = null;
+// An object to store the listener for the always-on-top setting change
 let on_always_on_top_change = null;
+// An object to store the listener for the maximized windows setting change
+let on_maximized_windows_change = null;
+// An object to store the listener for the tiled windows setting change
+let on_tiled_windows_change = null;
+
+
 
 // The dim effect object
 const DimWindowEffect = new GObject.registerClass(
@@ -81,6 +92,7 @@ function enable() {
     // Process all windows to add/remove the dim effect based on their focus state
     function processWindows() {
         // Loop on all windows
+        // eslint-disable-next-line complexity
         global.get_window_actors().forEach( function ( window_actor ) {
 
             const meta_window = window_actor.get_meta_window();
@@ -102,13 +114,17 @@ function enable() {
                 * the window is on the primary monitor and the extension is configured to dim only windows on secondary monitors
                 * the window is on a secondary monitor and the extension is configured to dim only windows on the primary monitor
                 * the window is marked as "always on top" and the extension is configured to not dim those windows
+                * the window is maximized and the extension is configured to not dim those windows
+                * the window is tiled and the extension is configured to not dim those windows - note: the tiling status is not exposed to extensions (https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1395), but in Gnome 42-44, the maximized state is 2 for tiled windows, so we can use that to detect tiled windows
             */
             if( meta_window.has_focus() ||
                 settings.get_boolean( 'dimming-enabled' ) === false ||
                 Main.overview.visible ||
                 ( settings.get_string( 'target-monitor' ) === 'primary' && meta_window.is_on_primary_monitor() === 0 ) ||
                 ( settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() !== 0 ) ||
-                ( settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() )
+                ( settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() ) ||
+                ( settings.get_boolean( 'dim-maximized' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.BOTH ) ||
+                ( settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.VERTICAL )
             ) {
                 // Do we have the dim effect?
                 if( window_actor.get_effect( 'dim' ) ) {
@@ -186,6 +202,16 @@ function enable() {
         processWindows();
     });
 
+    // Add a listener to react to the maximized windows setting change
+    on_maximized_windows_change = settings.connect( 'changed::dim-maximized', function () {
+        processWindows();
+    });
+
+    // Add a listener to react to the tiled windows setting change
+    on_tiled_windows_change = settings.connect( 'changed::dim-tiled', function () {
+        processWindows();
+    });
+
     // Create a global display listener to react to new window events
     on_window_created = global.display.connect( 'window-created', window_created );
 
@@ -229,6 +255,18 @@ function disable() {
     if( on_always_on_top_change ) {
         settings.disconnect( on_always_on_top_change );
         on_always_on_top_change = null;
+    }
+
+    // Destroy the listener for the maximized windows setting change
+    if( on_maximized_windows_change ) {
+        settings.disconnect( on_maximized_windows_change );
+        on_maximized_windows_change = null;
+    }
+
+    // Destroy the listener for the tiled windows setting change
+    if( on_tiled_windows_change ) {
+        settings.disconnect( on_tiled_windows_change );
+        on_tiled_windows_change = null;
     }
 
     // Remove the toggle shortcut and its listener

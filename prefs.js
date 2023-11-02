@@ -128,58 +128,30 @@ function buildPrefsWidget() {
     });
     prefsWidget.attach( alwaysOnTopSwitch, 1, 6, 1, 1 );
 
+    // Create a toggle switch to enable or disable the dimming effect for maximized windows
+    let maximizedLabel = new Gtk.Label( { label: "Apply the dimming effect to maximized windows:", halign: Gtk.Align.START, visible: true } );
+    prefsWidget.attach( maximizedLabel, 0, 7, 1, 1 );
+    let maximizedSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+    // Set the switch value to the current value
+    maximizedSwitch.set_active( settings.get_boolean( 'dim-maximized' ) );
+    // Make the switch act on the actual value
+    maximizedSwitch.connect( 'notify::active', function ( widget ) {
+        settings.set_boolean( 'dim-maximized', widget.active );
+    });
+    prefsWidget.attach( maximizedSwitch, 1, 7, 1, 1 );
+
+    // Create a toggle switch to enable or disable the dimming effect for tiled windows
+    let tiledLabel = new Gtk.Label( { label: "Apply the dimming effect to tiled windows:", halign: Gtk.Align.START, visible: true } );
+    prefsWidget.attach( tiledLabel, 0, 8, 1, 1 );
+    let tiledSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+    // Set the switch value to the current value
+    tiledSwitch.set_active( settings.get_boolean( 'dim-tiled' ) );
+    // Make the switch act on the actual value
+    tiledSwitch.connect( 'notify::active', function ( widget ) {
+        settings.set_boolean( 'dim-tiled', widget.active );
+    });
+    prefsWidget.attach( tiledSwitch, 1, 8, 1, 1 );
+
     // Return the built preferences widget
     return prefsWidget;
 }
-
-/* Prepared for next version
-function fillPreferencesWindow(window) {
-    // Get the extension settings
-    const settings = ExtensionUtils.getSettings();
-
-    window.search_enabled = true;
-    // Create a preferences page, with a single group
-    const page = new Adw.PreferencesPage({
-        title: 'General',
-        icon_name: 'dialog-information-symbolic',
-    });
-    window.add(page);
-    window._settings = this.getSettings();
-
-    const group = new Adw.PreferencesGroup({
-        title: 'Appearance',
-        description: 'Configure the appearance of the background windows',
-    });
-    page.add(group);
-
-    // Create a new row to control brightness
-    let row = new Adw.SpinRow({
-        title: 'Brightness',
-        subtitle: 'Sets the brightness of the background windows, from 0.1 (very dark) to 1.0 (normal)',
-        adjustment: new Gtk.Adjustment({
-            lower: 0.1,
-            upper: 1.0,
-            step_increment: 0.01,
-            page_increment: 0.1,
-            value: settings.get_double('brightness')
-        }),
-    });
-    group.add(row);
-
-    // Create a new row to control saturation
-    row = new Adw.SpinRow({
-        title: 'Saturation',
-        subtitle: 'Sets the saturation of the background windows, from 0.0 (grayscale) to 1.0 (normal)',
-        adjustment: new Gtk.Adjustment({
-            lower: 0.0,
-            upper: 1.0,
-            step_increment: 0.01,
-            page_increment: 0.1,
-            value: settings.get_double('saturation')
-        }),
-    });
-    group.add(row);
-
-    window._settings.bind( 'show-indicator', row, 'active', Gio.SettingsBindFlags.DEFAULT );
-}
-*/
