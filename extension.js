@@ -4,6 +4,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+// import the Gio library
+import Gio from 'gi://Gio';
 
 export default class DimBackgroundWindowsExtension extends Extension {
 
@@ -13,9 +15,13 @@ export default class DimBackgroundWindowsExtension extends Extension {
             GTypeName: 'DimWindowEffect',
         },
         class DimWindowEffect extends Clutter.ShaderEffect {
-            constructor( extensionSettings ) {
+            constructor( brightness, saturation ) {
                 super();
-                this.settings = extensionSettings;
+                this.brightness = brightness;
+                this.saturation = saturation;
+                /*this.settings = extensionSettings;
+                this.gnomeSettings = gnomeSettings;
+                this.interfaceSettings = interfaceSettings;*/
             }
 
             vfunc_get_static_shader_source() {
@@ -37,8 +43,8 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
             vfunc_paint_target(paint_node = null, paint_context = null) {
                 this.set_uniform_value( 'tex', 0 );
-                this.set_uniform_value( 'brightness', parseFloat( this.settings.get_double( 'brightness' ) - 1e-6 ) );
-                this.set_uniform_value( 'saturation', parseFloat( this.settings.get_double( 'saturation' ) - 1e-6 ) );
+                this.set_uniform_value( 'brightness', parseFloat( this.brightness - 1e-6 ) );
+                this.set_uniform_value( 'saturation', parseFloat( this.saturation - 1e-6 ) );
                 if (paint_node && paint_context)
                     super.vfunc_paint_target(paint_node, paint_context);
                 else if (paint_node)
@@ -46,14 +52,28 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 else
                     super.vfunc_paint_target();
             }
+
+            set_brightness( brightness ) {
+                this.brightness = brightness;
+                this.set_uniform_value( 'brightness', parseFloat( this.brightness - 1e-6 ) );
+            }
+
+            set_saturation( saturation ) {
+                this.saturation = saturation;
+                this.set_uniform_value( 'saturation', parseFloat( this.saturation - 1e-6 ) );
+            }
         }
     );
 
-    // The function called when the extension is enabled
+    // The function called when the extension is enabled / starts
     enable() {
 
         // Get the extension settings
         this.settings = this.getSettings();
+        // Get the gnome settings
+        this.gnomeSettings = new Gio.Settings( { schema_id: 'org.gnome.settings-daemon.plugins.color' } );
+        // Get the interface settings
+        this.interfaceSettings = new Gio.Settings( { schema_id: 'org.gnome.desktop.interface' } );
         // An object to store the listener for new windows
         this.on_window_created = null;
         // An object to store the listener for the overview being shown
@@ -77,34 +97,35 @@ export default class DimBackgroundWindowsExtension extends Extension {
         // Create a global keybinding to toggle the extension dimming effect
         Main.wm.addKeybinding( 'toggle-shortcut', this.settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, (() => {
             this.settings.set_boolean( 'dimming-enabled', ! this.settings.get_boolean( 'dimming-enabled' ) );
-            this._processWindows();
+            this._process_windows();
         }));
         // Need a listener to update the keybinding when it is changed in the preferences window
         this.on_toggle_key = this.settings.connect( 'changed::toggle-shortcut', (() => {
             Main.wm.removeKeybinding( 'toggle-shortcut' );
             Main.wm.addKeybinding( 'toggle-shortcut', this.settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, (() => {
                 this.settings.set_boolean( 'dimming-enabled', ! this.settings.get_boolean( 'dimming-enabled' ) );
-                this._processWindows();
+                this._process_windows();
             }));
         }));
+
         // Add a listener to react on the target monitor type change
         this.on_target_monitor_change = this.settings.connect( 'changed::target-monitor', (() => {
-            this._processWindows();
+            this._process_windows();
         }));
 
         // Add a listener to react to the always-on-top setting change
         this.on_always_on_top_change = this.settings.connect( 'changed::dim-always-on-top', (() => {
-            this._processWindows();
+            this._process_windows();
         }));
 
         // Add a listener to react to the maximized windows setting change
         this.on_maximized_windows_change = this.settings.connect( 'changed::dim-maximized', (() => {
-            this._processWindows();
+            this._process_windows();
         }));
 
         // Add a listener to react to the tiled windows setting change
         this.on_tiled_windows_change = this.settings.connect( 'changed::dim-tiled', (() => {
-            this._processWindows();
+            this._process_windows();
         }));
 
         // Create a global display listener to react to new window events
@@ -112,14 +133,14 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
         // Add a listener to react to the overview being shown/hidden
         this.on_shown_overview = Main.overview.connect( 'shown', (() => {
-            this._processWindows();
+            this._process_windows();
         }));
         this.on_hidden_overview = Main.overview.connect( 'hidden', (() => {
-            this._processWindows();
+            this._process_windows();
         }));
 
         // Process all existing windows when the extension is enabled
-        this._processWindows();
+        this._process_windows();
     }
 
     // The function called when the extension is disabled
@@ -180,32 +201,19 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 meta_window.disconnect( meta_window._on_focus );
                 delete meta_window._on_focus;
             }
-            // Remove the brightness update event listener
-            if( window_actor._on_update_brightness ) {
-                this.settings.disconnect( window_actor._on_update_brightness );
-                delete window_actor._on_update_brightness;
-            }
-            // Remove the saturation update event listener
-            if( window_actor._on_update_saturation ) {
-                this.settings.disconnect( window_actor._on_update_saturation );
-                delete window_actor._on_update_saturation;
-            }
-            // Remove the dim effect
-            if( window_actor.get_effect( 'dim' ) ) {
-                window_actor.remove_effect_by_name( 'dim' );
-            }
-            // Delete the effect object for this window
-            if( window_actor._effect ) {
-                delete window_actor._effect;
-            }
+
+            // Diconnect all listeners on this window
+            this._disable_window_dimming( window_actor );
         });
 
-        // Delete the settings object
+        // Delete the settings objects
+        this.interfaceSettings = null;
+        this.gnomeSettings = null;
         this.settings = null;
     }
 
     // Determine if a window is dimmable based on its type
-    _is_dimmable( meta_window ) {
+    _is_dimmable_type( meta_window ) {
         if( ! meta_window ) {
             return false;
         }
@@ -218,7 +226,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
     }
 
     // Process all windows to add/remove the dim effect
-    _processWindows() {
+    _process_windows() {
 
         // Loop on all windows
         // eslint-disable-next-line complexity
@@ -228,14 +236,17 @@ export default class DimBackgroundWindowsExtension extends Extension {
             if( ! meta_window ) {
                 return;
             }
-            // Ensure that the window has the focus event listener
+
+            // Add a listener to react on the window focus change, whether its type is dimmable or not
             if( ! meta_window._on_focus ) {
                 meta_window._on_focus = meta_window.connect( 'focus', this._update_on_focus.bind( this ) );
             }
+
             // Exit if the window is not dimmable 
-            if( ! this._is_dimmable( meta_window ) ) {
+            if( ! this._is_dimmable_type( meta_window ) ) {
                 return;
             }
+
             /* We don't want to dim the window if any of those conditions are met:
                 * the window has the focus
                 * the extension is internally toggled off
@@ -271,48 +282,61 @@ export default class DimBackgroundWindowsExtension extends Extension {
             ) {
                 // Do we have the dim effect?
                 if( window_actor.get_effect( 'dim' ) ) {
-                    // Remove the brightness update event listener
-                    if( window_actor._on_update_brightness ) {
-                        this.settings.disconnect( window_actor._on_update_brightness );
-                        delete window_actor._on_update_brightness;
-                    }
-                    // Remove the saturation update event listener
-                    if( window_actor._on_update_saturation ) {
-                        this.settings.disconnect( window_actor._on_update_saturation );
-                        delete window_actor._on_update_saturation;
-                    }
-                    // Remove the dim effect
-                    window_actor.remove_effect_by_name( 'dim' );
-                    // Delete the effect object for this window
-                    if( window_actor._effect ) {
-                        delete window_actor._effect;
-                    }
+                    // Disconnect all listeners on this window
+                    this._disable_window_dimming( window_actor );
                 }
             // None of the above conditions are met, so we want to dim the window
             } else {
                 // Don't we have the dim effect?
                 if( ! window_actor.get_effect( 'dim' ) ) {
-                    // Dim it
-                    let effect = new this._DimWindowEffect( this.settings );
-                    window_actor._effect = effect;
-                    window_actor.add_effect_with_name( 'dim', effect );
-                    // Make sure the effect is updated immediately - and not just on next repaint - when parameters are updated in the preferences window
-                    window_actor._on_update_brightness = this.settings.connect( 'changed::brightness', () => {
-                        effect.set_uniform_value( 'brightness', parseFloat( this.settings.get_double( 'brightness' ) - 1e-6 ) );
-                    });
-                    window_actor._on_update_saturation = this.settings.connect( 'changed::saturation', () => {
-                        effect.set_uniform_value( 'saturation', parseFloat( this.settings.get_double( 'saturation' ) - 1e-6 ) );
-                    });
+                    // Connect all listeners on this window
+                    this._enable_window_dimming( window_actor );
                 }
             }
         });
+    }
+
+    // This function computes the brightness value to use depending on the night light and dark style settings
+    _getBrightness() {
+        let brightness;
+        // Determine the brightness and saturation values to use, based on the night light and dark style settings
+        // We need to check those settings in accordance with the brightness and saturation override settings of the extension
+
+        // If the night light mode is enabled and if the brightness override setting is enabled
+        if( this.gnomeSettings.get_boolean( 'night-light-enabled' ) && this.settings.get_boolean( 'brightness-night-light-override' ) ) {
+            brightness = this.settings.get_double( 'brightness-night-light' );
+        // else if the dark style is enabled and if the brightness override setting is enabled
+        } else if( this.interfaceSettings.get_string( 'color-scheme' ) === 'prefer-dark' && this.settings.get_boolean( 'brightness-dark-style-override' ) ) {
+            brightness = this.settings.get_double( 'brightness-dark-style' );
+        } else {
+            brightness = this.settings.get_double( 'brightness' );
+        }
+        return brightness;
+    }
+
+    // This function computes the saturation value to use depending on the night light and dark style settings
+    _getSaturation() {
+        let saturation;
+        // Determine the saturation value to use, based on the night light and dark style settings
+        // We need to check those settings in accordance with the saturation override settings of the extension
+
+        // If the night light mode is enabled and if the saturation override setting is enabled
+        if( this.gnomeSettings.get_boolean( 'night-light-enabled' ) && this.settings.get_boolean( 'saturation-night-light-override' ) ) {
+            saturation = this.settings.get_double( 'saturation-night-light' );
+        // else if the dark style is enabled and if the saturation override setting is enabled
+        } else if( this.interfaceSettings.get_string( 'color-scheme' ) === 'prefer-dark' && this.settings.get_boolean( 'saturation-dark-style-override' ) ) {
+            saturation = this.settings.get_double( 'saturation-dark-style' );
+        } else {
+            saturation = this.settings.get_double( 'saturation' );
+        }
+        return saturation;
     }
 
     // Focus event listener
     _update_on_focus( target_window ) {
         // Process all windows
         // Note: the focus state change of a window affects the dimming of the window loosing focus
-        this._processWindows();
+        this._process_windows();
     }
 
     // New window event listener
@@ -321,4 +345,148 @@ export default class DimBackgroundWindowsExtension extends Extension {
         target_window._on_focus = target_window.connect( 'focus', this._update_on_focus.bind( this ) );
     }
 
+    // Function used to configure the dim effect - there is one per window - and to connect all listeners to the window
+    _enable_window_dimming( window_actor ) {
+
+        // Create the dim effect
+        let effect = new this._DimWindowEffect( this._getBrightness(), this._getSaturation() );
+        window_actor._effect = effect;
+        window_actor.add_effect_with_name( 'dim', effect );
+
+        // Listen to the brightness setting change
+        window_actor._on_update_brightness = this.settings.connect( 'changed::brightness', () => {
+            effect.set_brightness( this._getBrightness() );
+        });
+
+        // Listen to the brightness night light override toggle setting change
+        window_actor._on_update_brightness_night_light_override = this.settings.connect( 'changed::brightness-night-light-override', () => {
+            effect.set_brightness( this._getBrightness() );
+        });
+        // Listen to the brightness night light setting change
+        window_actor._on_update_brightness_night_light = this.settings.connect( 'changed::brightness-night-light', () => {
+            effect.set_brightness( this._getBrightness() );
+        });
+        // Listen to the brightness dark style override toggle setting change
+        window_actor._on_update_brightness_dark_style_override = this.settings.connect( 'changed::brightness-dark-style-override', () => {
+            effect.set_brightness( this._getBrightness() );
+        });
+        // Listen to the brightness dark style setting change
+        window_actor._on_update_brightness_night_light = this.settings.connect( 'changed::brightness-dark-style', () => {
+            effect.set_brightness( this._getBrightness() );
+        });
+
+        // Listen to the saturation setting change
+        window_actor._on_update_saturation = this.settings.connect( 'changed::saturation', () => {
+            effect.set_saturation( this._getSaturation() );
+        });
+
+        // Listen to the saturation night light override toggle setting change
+        window_actor._on_update_saturation_night_light_override = this.settings.connect( 'changed::saturation-night-light-override', () => {
+            effect.set_saturation( this._getSaturation() );
+        });
+        // Listen to the saturation night light setting change
+        window_actor._on_update_saturation_night_light = this.settings.connect( 'changed::saturation-night-light', () => {
+            effect.set_saturation( this._getSaturation() );
+        });
+        // Listen to the saturation dark style override toggle setting change
+        window_actor._on_update_saturation_dark_style_override = this.settings.connect( 'changed::saturation-dark-style-override', () => {
+            effect.set_saturation( this._getSaturation() );
+        });
+        // Listen to the saturation dark style setting change
+        window_actor._on_update_saturation_dark_style = this.settings.connect( 'changed::saturation-dark-style', () => {
+            effect.set_saturation( this._getSaturation() );
+        });
+
+        // Add a listener to react on the night light state change in the Gnome settings
+        window_actor.on_night_light_change = this.gnomeSettings.connect( 'changed::night-light-enabled', (() => {
+            effect.set_brightness( this._getBrightness() );
+            effect.set_saturation( this._getSaturation() );
+        }));
+
+        // Add a listener to react on the dark style appearance change in the Gnome settings
+        window_actor.on_color_scheme_change = this.interfaceSettings.connect( 'changed::color-scheme', (() => {
+            effect.set_brightness( this._getBrightness() );
+            effect.set_saturation( this._getSaturation() );
+        }));
+    }
+
+    // Function used to delete the window effect and to disconnect all listeners from the window
+    _disable_window_dimming( window_actor ) {
+
+        // Remove the brightness update event listener
+        if( window_actor._on_update_brightness ) {
+            this.settings.disconnect( window_actor._on_update_brightness );
+            delete window_actor._on_update_brightness;
+        }
+
+        // Remove the brightness night light override toggle setting change event listener
+        if( window_actor._on_update_brightness_night_light_override ) {
+            this.settings.disconnect( window_actor._on_update_brightness_night_light_override );
+            delete window_actor._on_update_brightness_night_light_override;
+        }
+        // Remove the brightness night light setting change event listener
+        if( window_actor._on_update_brightness_night_light ) {
+            this.settings.disconnect( window_actor._on_update_brightness_night_light );
+            delete window_actor._on_update_brightness_night_light;
+        }
+        // Remove the brightness dark style override toggle setting change event listener
+        if( window_actor._on_update_brightness_dark_style_override ) {
+            this.settings.disconnect( window_actor._on_update_brightness_dark_style_override );
+            delete window_actor._on_update_brightness_dark_style_override;
+        }
+        // Remove the brightness dark style setting change event listener
+        if( window_actor._on_update_brightness_dark_style ) {
+            this.settings.disconnect( window_actor._on_update_brightness_dark_style );
+            delete window_actor._on_update_brightness_dark_style;
+        }
+
+        // Remove the saturation update event listener
+        if( window_actor._on_update_saturation ) {
+            this.settings.disconnect( window_actor._on_update_saturation );
+            delete window_actor._on_update_saturation;
+        }
+
+        // Remove the saturation night light override toggle setting change event listener
+        if( window_actor._on_update_saturation_night_light_override ) {
+            this.settings.disconnect( window_actor._on_update_saturation_night_light_override );
+            delete window_actor._on_update_saturation_night_light_override;
+        }
+        // Remove the saturation night light setting change event listener
+        if( window_actor._on_update_saturation_night_light ) {
+            this.settings.disconnect( window_actor._on_update_saturation_night_light );
+            delete window_actor._on_update_saturation_night_light;
+        }
+        // Remove the saturation dark style override toggle setting change event listener
+        if( window_actor._on_update_saturation_dark_style_override ) {
+            this.settings.disconnect( window_actor._on_update_saturation_dark_style_override );
+            delete window_actor._on_update_saturation_dark_style_override;
+        }
+        // Remove the saturation dark style setting change event listener
+        if( window_actor._on_update_saturation_dark_style ) {
+            this.settings.disconnect( window_actor._on_update_saturation_dark_style );
+            delete window_actor._on_update_saturation_dark_style;
+        }
+
+        // Destroy the listener for the color scheme change
+        if( window_actor.on_color_scheme_change ) {
+            this.interfaceSettings.disconnect( window_actor.on_color_scheme_change );
+            delete window_actor.on_color_scheme_change;
+        }
+
+        // Destroy the listener for the night light state change
+        if( window_actor.on_night_light_change ) {
+            this.gnomeSettings.disconnect( window_actor.on_night_light_change );
+            delete window_actor.on_night_light_change;
+        }
+
+        // Remove the dim effect
+        if( window_actor.get_effect( 'dim' ) ) {
+            window_actor.remove_effect_by_name( 'dim' );
+        }
+        // Delete the effect object for this window
+        if( window_actor._effect ) {
+            delete window_actor._effect;
+        }
+    }
+        
 }

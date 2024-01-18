@@ -1,4 +1,4 @@
-# Gnome Shell Extension- Dim Background Windows - Version 9 for Gnome 45
+# Gnome Shell Extension- Dim Background Windows - Version 11 for Gnome 45
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
@@ -36,6 +36,8 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
+- Version 12 : Gnome 42 to 44 - Added options to control the dimming effect in night light mode and with dark style appearance
+- Version 11 : Gnome 45       - Added options to control the dimming effect in night light mode and with dark style appearance
 - Version 10 : Gnome 42 to 44 - Added options to control the dimming effect on maximized and tiled windows
 - Version  9 : Gnome 45       - Added options to control the dimming effect on maximized and tiled windows
 - Version  8 : identical to version 7, but for Gnome 45

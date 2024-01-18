@@ -41,12 +41,30 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         });
         window.add(page);
 
-        // Create a preferences group
-        const group = new Adw.PreferencesGroup({
-            title: _( 'Appearance' ),
-            description: _( 'Configure the appearance of the extension' ),
+        // Create a preferences group for the brightness settings
+        const groupBrightness = new Adw.PreferencesGroup({
+            title: _( 'Brightness' ),
+            description: _( 'Set the brightness factor for background windows' ),
         });
-        page.add(group);
+        page.add( groupBrightness );
+
+        // Create a preferences group for the saturation settings
+        const groupSaturation = new Adw.PreferencesGroup({
+            title: _( 'Saturation' ),
+            description: _( 'Set the saturation factor for background windows' ),
+        });
+        page.add( groupSaturation );
+
+        // Create a preferences group for the other settings
+        const groupOther = new Adw.PreferencesGroup({
+            title: _( 'Other Settings' ),
+            description: _( 'Configure the shortcut, displays and windows settings' ),
+        });
+        page.add( groupOther );
+
+
+
+        // ========== BASE BRIGHTNESS CONTROL ==========
 
         // Create a brightness slider
         let brightnessSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.01 );
@@ -62,12 +80,105 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         }));
         // Add the slider to a new row
         const brightnessRow = new Adw.ActionRow({
-            title: _( 'Brightness:' ),
-            subtitle: _( 'Set the brightness factor for background windows' )
+            title: _( 'Base brightness factor' ),
+            subtitle: _( 'Applies globally unless the night light mode or dark style appearance overrides are enabled' )
         });
         brightnessRow.add_suffix( brightnessSlider );
         // Add the row to the group
-        group.add( brightnessRow );
+        groupBrightness.add( brightnessRow );
+
+
+
+        // ========== NIGHT LIGHT BRIGHTNESS CONTROL ==========
+
+        // Create a brightness factor slider for night light mode
+        let nightLightBrightnessSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.01 );
+        // Draw the numerical value while the slider is moved
+        nightLightBrightnessSlider.set_draw_value( true );
+        // Make the slider use the window width
+        nightLightBrightnessSlider.set_hexpand( true );
+        // Set the slider value to the current value
+        nightLightBrightnessSlider.set_value( settings.get_double( 'brightness-night-light' ) );
+        // Make the slider act on the actual value
+        nightLightBrightnessSlider.connect( 'value-changed', ( ( widget ) => {
+            settings.set_double( 'brightness-night-light', widget.get_value() );
+        }));
+        // Enable or disable the slider depending on the current override toggle switch value
+        nightLightBrightnessSlider.set_sensitive( settings.get_boolean( 'brightness-night-light-override' ) );
+
+        // Create a toggle switch to enable or disable the night light mode brightness factor
+        let nightLightBrightnessSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        nightLightBrightnessSwitch.set_active( settings.get_boolean( 'brightness-night-light-override' ) );
+        // Make the switch act on the actual value
+        nightLightBrightnessSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'brightness-night-light-override', widget.active );
+            nightLightBrightnessSlider.set_sensitive( widget.active );
+        }));
+
+        // Add the slider to a new row
+        const nightLightBrightnessRow = new Adw.ActionRow({
+            title: _( 'Night Light brightness override' ),
+            subtitle: _( 'Applies if night light mode is enabled' )
+        });
+        nightLightBrightnessRow.add_prefix( nightLightBrightnessSwitch );
+        nightLightBrightnessRow.add_suffix( nightLightBrightnessSlider );
+        // Add the row to the group
+        groupBrightness.add( nightLightBrightnessRow );
+
+
+
+        // ========== DARK STYLE APPEARANCE BRIGHTNESS CONTROL ==========
+
+        // Create a brightness factor slider for dark style appearance
+        let darkStyleBrightnessSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.01 );
+        // Draw the numerical value while the slider is moved
+        darkStyleBrightnessSlider.set_draw_value( true );
+        // Make the slider use the window width
+        darkStyleBrightnessSlider.set_hexpand( true );
+        // Set the slider value to the current value
+        darkStyleBrightnessSlider.set_value( settings.get_double( 'brightness-dark-style' ) );
+        // Make the slider act on the actual value
+        darkStyleBrightnessSlider.connect( 'value-changed', ( ( widget ) => {
+            settings.set_double( 'brightness-dark-style', widget.get_value() );
+        }));
+        // Enable or disable the slider depending on the current override toggle switch value
+        darkStyleBrightnessSlider.set_sensitive( settings.get_boolean( 'brightness-dark-style-override' ) );
+
+        // Create a toggle switch to enable or disable the dark style appearance brightness factor
+        let darkStyleBrightnessSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        darkStyleBrightnessSwitch.set_active( settings.get_boolean( 'brightness-dark-style-override' ) );
+        // Make the switch act on the actual value
+        darkStyleBrightnessSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'brightness-dark-style-override', widget.active );
+            darkStyleBrightnessSlider.set_sensitive( widget.active );
+        }));
+
+        // Add the slider to a new row
+        const darkStyleBrightnessRow = new Adw.ActionRow({
+            title: _( 'Dark Style brightness override' ),
+            subtitle: _( 'Applies if dark style appearance is enabled' )
+        });
+        darkStyleBrightnessRow.add_prefix( darkStyleBrightnessSwitch );
+        darkStyleBrightnessRow.add_suffix( darkStyleBrightnessSlider );
+        // Add the row to the group
+        groupBrightness.add( darkStyleBrightnessRow );
+
+
+
+        // ========== BRIGHTNESS NOTE ==========
+
+        // Add a note
+        const brightnessCommentRow = new Adw.ActionRow({
+            title: _(''),
+            subtitle: _('<small>The night light override has priority over the dark style override if both are enabled above and if both modes are enabled in the Gnome settings</small>')
+        });
+        groupBrightness.add( brightnessCommentRow );
+
+
+
+        // ========== BASE SATURATION CONTROLS ==========
 
         // Create a saturation label and slider
         let saturationSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.01 );
@@ -83,12 +194,104 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         }));
         // Add the slider to a new row
         const saturationRow = new Adw.ActionRow({
-            title: _( 'Saturation:' ),
-            subtitle: _( 'Set the saturation factor for background windows' )
+            title: _( 'Base saturation factor' ),
+            subtitle: _( 'Applies globally unless the night light mode or dark style appearance overrides are enabled' )
         });
         saturationRow.add_suffix( saturationSlider );
         // Add the row to the group
-        group.add( saturationRow );
+        groupSaturation.add( saturationRow );
+
+
+
+        // ========== NIGHT LIGHT SATURATION CONTROL ==========
+
+        // Create a saturation correction factor slider for night light mode
+        let nightLightSaturationSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.01 );
+        // Draw the numerical value while the slider is moved
+        nightLightSaturationSlider.set_draw_value( true );
+        // Make the slider use the window width
+        nightLightSaturationSlider.set_hexpand( true );
+        // Set the slider value to the current value
+        nightLightSaturationSlider.set_value( settings.get_double( 'saturation-night-light' ) );
+        // Make the slider act on the actual value
+        nightLightSaturationSlider.connect( 'value-changed', ( ( widget ) => {
+            settings.set_double( 'saturation-night-light', widget.get_value() );
+        }));
+        // Enable or disable the slider depending on the current override toggle switch value
+        nightLightSaturationSlider.set_sensitive( settings.get_boolean( 'saturation-night-light-override' ) );
+
+        // Create a toggle switch to enable or disable the night light mode saturation factor
+        let nightLightSaturationSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        nightLightSaturationSwitch.set_active( settings.get_boolean( 'saturation-night-light-override' ) );
+        // Make the switch act on the actual value
+        nightLightSaturationSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'saturation-night-light-override', widget.active );
+            nightLightSaturationSlider.set_sensitive( widget.active );
+        }));
+
+        // Add the slider to a new row
+        const nightLightSaturationRow = new Adw.ActionRow({
+            title: _( 'Night Light saturation override' ),
+            subtitle: _( 'Applies if night light mode is enabled' )
+        });
+        nightLightSaturationRow.add_prefix( nightLightSaturationSwitch );
+        nightLightSaturationRow.add_suffix( nightLightSaturationSlider );
+        // Add the row to the group
+        groupSaturation.add( nightLightSaturationRow );
+
+
+
+        // ========== DARK STYLE APPEARANCE SATURATION CONTROL ==========
+
+        // Create a saturation correction factor slider for dark style appearance
+        let darkStyleSaturationSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.01 );
+        // Draw the numerical value while the slider is moved
+        darkStyleSaturationSlider.set_draw_value( true );
+        // Make the slider use the window width
+        darkStyleSaturationSlider.set_hexpand( true );
+        // Set the slider value to the current value
+        darkStyleSaturationSlider.set_value( settings.get_double( 'saturation-dark-style' ) );
+        // Make the slider act on the actual value
+        darkStyleSaturationSlider.connect( 'value-changed', ( ( widget ) => {
+            settings.set_double( 'saturation-dark-style', widget.get_value() );
+        }));
+        // Enable or disable the slider depending on the current override toggle switch value
+        darkStyleSaturationSlider.set_sensitive( settings.get_boolean( 'saturation-dark-style-override' ) );
+
+        // Create a toggle switch to enable or disable the dark style appearance saturation factor
+        let darkStyleSaturationSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        darkStyleSaturationSwitch.set_active( settings.get_boolean( 'saturation-dark-style-override' ) );
+        // Make the switch act on the actual value
+        darkStyleSaturationSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'saturation-dark-style-override', widget.active );
+            darkStyleSaturationSlider.set_sensitive( widget.active );
+        }));
+
+        // Add the slider to a new row
+        const darkStyleSaturationRow = new Adw.ActionRow({
+            title: _( 'Dark style saturation override' ),
+            subtitle: _( 'Applies if dark style appearance is enabled' )
+        });
+        darkStyleSaturationRow.add_prefix( darkStyleSaturationSwitch );
+        darkStyleSaturationRow.add_suffix( darkStyleSaturationSlider );
+        // Add the row to the group
+        groupSaturation.add( darkStyleSaturationRow );
+
+
+
+        // ========== SATURATION NOTE ==========
+
+        // Add a note
+        const saturationCommentRow = new Adw.ActionRow({
+            title: _(''),
+            subtitle: _('<small>The night light override has priority over the dark style override if both are enabled above and if both modes are enabled in the Gnome settings</small>')
+        });
+        groupSaturation.add( saturationCommentRow );
+
+
+        // ========== OTHER CONTROLS ==========
 
         // Create a toggle shortcut editor control
         let toggleKeyEntry = new Gtk.Entry( { visible: true } );
@@ -118,7 +321,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         });
         toggleKeyRow.add_suffix( toggleKeyEntry );
         // Add the row to the group
-        group.add( toggleKeyRow );
+        groupOther.add( toggleKeyRow );
 
         // Add the shortcut key status label to a new row
         const toggleKeyStatusRow = new Adw.ActionRow({
@@ -127,7 +330,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         });
         toggleKeyStatusRow.add_suffix( toggleKeyStatusLabel );
         // Add the row to the group
-        group.add( toggleKeyStatusRow );
+        groupOther.add( toggleKeyStatusRow );
 
         // Create a dropdown that lets the user choose whether to apply the dimming effect on all monitors, only the primary monitor, or only the focused monitor
         let monitorComboBox = new Gtk.ComboBoxText( { visible: true } );
@@ -149,7 +352,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         });
         monitorRow.add_suffix( monitorComboBox );
         // Add the row to the group
-        group.add( monitorRow );
+        groupOther.add( monitorRow );
 
         // Create a toggle switch to enable or disable the dimming effect for windows marked as "always on top"
         let alwaysOnTopSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
@@ -164,7 +367,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
             //subtitle: _( '' )
         });
         alwaysOnTopRow.add_suffix( alwaysOnTopSwitch );
-        group.add( alwaysOnTopRow );
+        groupOther.add( alwaysOnTopRow );
 
         // Create a toggle switch to enable or disable the dimming effect for maximized windows
         let maximizedSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
@@ -179,7 +382,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
             subtitle: _( 'This applies to fully maximized - horizontally and vertically - windows' )
         });
         maximizedRow.add_suffix( maximizedSwitch );
-        group.add( maximizedRow );
+        groupOther.add( maximizedRow );
 
         // Create a toggle switch to enable or disable the dimming effect for tiled windows
         let tiledSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
@@ -194,7 +397,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
             subtitle: _( 'This applies to tiled - left, right, top or bottom - windows' )
         });
         tiledRow.add_suffix( tiledSwitch );
-        group.add( tiledRow );
+        groupOther.add( tiledRow );
     }
 
 }
