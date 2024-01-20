@@ -4,12 +4,52 @@
     <key name="brightness" type="d">
       <default>0.8</default>
       <summary>Brightness %</summary>
-      <description>Set the brightness factor - 100% for no reduction to 10% for very dark background windows.</description>
+      <description>Set the brightness factor - 1.0 for no reduction to 0.1 for very dark background windows.</description>
     </key>
     <key name="saturation" type="d">
       <default>0.8</default>
       <summary>Saturation %</summary>
-      <description>Set the saturation factor - 100% for no reduction to 0% for full grayscale.</description>
+      <description>Set the saturation factor - 1.0 for no reduction to 0.0 for full grayscale.</description>
+    </key>
+    <key name="brightness-night-light-override" type="b">
+      <default>false</default>
+      <summary>Use a different brightness factor when night light mode is enabled</summary>
+      <description>This determines if the brightness factor for night light is used or not.</description>
+    </key>
+    <key name="brightness-night-light" type="d">
+      <default>0.8</default>
+      <summary>Brightness Night Light Factor %</summary>
+      <description>Set the brightness factor when the display night light is enabled - 1.0 for no reduction to 0.1 for very dark background windows.</description>
+    </key>
+    <key name="saturation-night-light-override" type="b">
+      <default>false</default>
+      <summary>Use a different saturation factor when night light mode is enabled</summary>
+      <description>This determines if the saturation factor for night light is used or not.</description>
+    </key>
+    <key name="saturation-night-light" type="d">
+      <default>0.8</default>
+      <summary>Saturation Night Light Factor %</summary>
+      <description>Set the saturation factor when the display night light is enabled - 1.0 for no reduction to 0.0 for full grayscale.</description>
+    </key>
+    <key name="brightness-dark-style-override" type="b">
+      <default>false</default>
+      <summary>Use a different brightness factor when dark style appearance is enabled</summary>
+      <description>This determines if the brightness factor for dark style appearance is used or not.</description>
+    </key>
+    <key name="brightness-dark-style" type="d">
+      <default>0.8</default>
+      <summary>Brightness Dark Style Factor %</summary>
+      <description>Set the brightness factor when dark style appearance is enabled - 1.0 for no reduction to 0.1 for very dark background windows.</description>
+    </key>
+    <key name="saturation-dark-style-override" type="b">
+      <default>false</default>
+      <summary>Use a different saturation factor when dark style appearance is enabled</summary>
+      <description>This determines if the saturation factor for dark style appearance is used or not.</description>
+    </key>
+    <key name="saturation-dark-style" type="d">
+      <default>0.8</default>
+      <summary>Saturation Dark Style Factor %</summary>
+      <description>Set the saturation factor when dark style appearance is enabled - 1.0 for no reduction to 0.0 for full grayscale.</description>
     </key>
     <key name="toggle-shortcut" type="as">
       <default><![CDATA[['<Super>g']]]></default>
