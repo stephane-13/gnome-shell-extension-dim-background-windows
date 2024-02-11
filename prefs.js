@@ -378,8 +378,8 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
             settings.set_boolean( 'dim-maximized', widget.active );
         }));
         const maximizedRow = new Adw.ActionRow({
-            title: _( 'Apply the dimming effect to maximized windows:' ),
-            subtitle: _( 'This applies to fully maximized - horizontally and vertically - windows' )
+            title: _( 'Apply the dimming effect to fully maximized windows:' ),
+            subtitle: _( 'This applies to fully maximized - horizontally AND vertically - windows' )
         });
         maximizedRow.add_suffix( maximizedSwitch );
         groupOther.add( maximizedRow );
@@ -394,7 +394,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         }));
         const tiledRow = new Adw.ActionRow({
             title: _( 'Apply the dimming effect to tiled windows:' ),
-            subtitle: _( 'This applies to tiled - left, right, top or bottom - windows' )
+            subtitle: _( 'This applies to tiled - left, right, top or bottom - windows and horizontally OR vertically - not both - maximized windows' )
         });
         tiledRow.add_suffix( tiledSwitch );
         groupOther.add( tiledRow );

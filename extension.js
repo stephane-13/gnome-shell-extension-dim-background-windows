@@ -256,6 +256,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 * the window is marked as "always on top" and the extension is configured to not dim those windows
                 * the window is maximized and the extension is configured to not dim those windows
                 * the window is tiled and the extension is configured to not dim those windows - note: the tiling status is not exposed to extensions, so we use the work area to determine if the window is tiled - this will be less hackish when this is implemented: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1395
+                * Note: Gnome 45.3 - as opposed to 45.2 and older - reports tiled windows correctly with the get_maximized() method, i.e. it returns 3 for maximized windows and 2 for vertically tiled windows (left or right) - apparently it's not possible to tile windows horizontally on top with Gnome 45.3, as it was possible with Gnome 45.2
             */
             if( meta_window.has_focus() ||
                 this.settings.get_boolean( 'dimming-enabled' ) === false ||
@@ -264,7 +265,9 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 ( this.settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() !== 0 ) ||
                 ( this.settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() ) ||
                 ( this.settings.get_boolean( 'dim-maximized' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.BOTH ) ||
-                ( this.settings.get_boolean( 'dim-tiled' ) === false && ! meta_window.get_maximized() &&
+                ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.HORIZONTAL ) ||
+                ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.VERTICAL ) ||
+                ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() !== Meta.MaximizeFlags.BOTH &&
                     (
                         (
                             meta_window.get_frame_rect().height === meta_window.get_work_area_current_monitor().height && (
