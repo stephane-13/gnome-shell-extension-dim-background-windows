@@ -2,7 +2,7 @@
   "uuid": "dim-background-windows@stephane-13.github.com", 
   "name": "Dim Background Windows", 
   "description": "Dim windows without focus", 
-  "version": 12,
+  "version": 14,
   "settings-schema": "org.gnome.shell.extensions.dim-background-windows",
   "shell-version": [ "42", "43", "44" ], 
   "url": "https://github.com/stephane-13/gnome-shell-extension-dim-background-windows"

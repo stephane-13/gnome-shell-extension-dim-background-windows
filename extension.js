@@ -305,7 +305,7 @@ function _getBrightness() {
     if( gnomeSettings.get_boolean( 'night-light-enabled' ) && settings.get_boolean( 'brightness-night-light-override' ) ) {
         brightness = settings.get_double( 'brightness-night-light' );
     // else if the dark style is enabled and if the brightness override setting is enabled
-    } else if( this.interfaceSettings.get_string( 'color-scheme' ) === 'prefer-dark' && settings.get_boolean( 'brightness-dark-style-override' ) ) {
+    } else if( interfaceSettings.get_string( 'color-scheme' ) === 'prefer-dark' && settings.get_boolean( 'brightness-dark-style-override' ) ) {
         brightness = settings.get_double( 'brightness-dark-style' );
     } else {
         brightness = settings.get_double( 'brightness' );
@@ -323,7 +323,7 @@ function _getSaturation() {
     if( gnomeSettings.get_boolean( 'night-light-enabled' ) && settings.get_boolean( 'saturation-night-light-override' ) ) {
         saturation = settings.get_double( 'saturation-night-light' );
     // else if the dark style is enabled and if the saturation override setting is enabled
-    } else if( this.interfaceSettings.get_string( 'color-scheme' ) === 'prefer-dark' && settings.get_boolean( 'saturation-dark-style-override' ) ) {
+    } else if( interfaceSettings.get_string( 'color-scheme' ) === 'prefer-dark' && settings.get_boolean( 'saturation-dark-style-override' ) ) {
         saturation = settings.get_double( 'saturation-dark-style' );
     } else {
         saturation = settings.get_double( 'saturation' );
