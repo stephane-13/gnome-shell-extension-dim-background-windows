@@ -1,10 +1,11 @@
-# Gnome Shell Extension- Dim Background Windows - Version 13 for Gnome 45
+# Gnome Shell Extension- Dim Background Windows - Version 15 for Gnome 45 and 46
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
 # Compatibility
 
 This extension has been tested on:
+ - Ubuntu 24.04 using Gnome 46.0 / Wayland.
  - Ubuntu 23.10 using Gnome 45.2 / Wayland.
  - Fedora 39 using Gnome 45.3 / Wayland.
 
@@ -37,6 +38,8 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
+- Version 15 : Gnome 45-46    - Added support for Gnome 46
+- Version 14 : Gnome 42 to 44 - Fixed startup error "this.interfaceSettings is undefined" (https://github.com/stephane-13/gnome-shell-extension-dim-background-windows/issues/21)
 - Version 13 : Gnome 45       - Bug fix release for tiled windows not handled correctly (https://github.com/stephane-13/gnome-shell-extension-dim-background-windows/issues/17)
 - Version 12 : Gnome 42 to 44 - Added options to control the dimming effect in night light mode and with dark style appearance
 - Version 11 : Gnome 45       - Added options to control the dimming effect in night light mode and with dark style appearance
