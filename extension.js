@@ -17,11 +17,10 @@ export default class DimBackgroundWindowsExtension extends Extension {
         class DimWindowEffect extends Clutter.ShaderEffect {
             constructor( brightness, saturation ) {
                 super();
-                this.brightness = brightness;
-                this.saturation = saturation;
-                /*this.settings = extensionSettings;
-                this.gnomeSettings = gnomeSettings;
-                this.interfaceSettings = interfaceSettings;*/
+                // set uniforms
+                this.set_uniform_value( 'tex', 0 );
+                this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
+                this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
             }
 
             vfunc_get_static_shader_source() {
@@ -41,26 +40,16 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 ';
             }
 
-            vfunc_paint_target(paint_node = null, paint_context = null) {
-                this.set_uniform_value( 'tex', 0 );
-                this.set_uniform_value( 'brightness', parseFloat( this.brightness - 1e-6 ) );
-                this.set_uniform_value( 'saturation', parseFloat( this.saturation - 1e-6 ) );
-                if (paint_node && paint_context)
-                    super.vfunc_paint_target(paint_node, paint_context);
-                else if (paint_node)
-                    super.vfunc_paint_target(paint_node);
-                else
-                    super.vfunc_paint_target();
+            vfunc_paint_target(...params) {
+              super.vfunc_paint_target(...params);
             }
 
             set_brightness( brightness ) {
-                this.brightness = brightness;
-                this.set_uniform_value( 'brightness', parseFloat( this.brightness - 1e-6 ) );
+                this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
             }
 
             set_saturation( saturation ) {
-                this.saturation = saturation;
-                this.set_uniform_value( 'saturation', parseFloat( this.saturation - 1e-6 ) );
+                this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
             }
         }
     );
@@ -74,8 +63,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
         this.gnomeSettings = new Gio.Settings( { schema_id: 'org.gnome.settings-daemon.plugins.color' } );
         // Get the interface settings
         this.interfaceSettings = new Gio.Settings( { schema_id: 'org.gnome.desktop.interface' } );
-        // An object to store the listener for new windows
-        this.on_window_created = null;
+
         // An object to store the listener for the overview being shown
         this.on_shown_overview = null;
         // An object to store the listener for the overview being hidden
@@ -108,6 +96,11 @@ export default class DimBackgroundWindowsExtension extends Extension {
             }));
         }));
 
+        // Add a listener to react on the focus change
+        this.on_global_focus_change = global.display.connect('notify::focus-window', (() => {
+            this._process_windows();
+        }));
+
         // Add a listener to react on the target monitor type change
         this.on_target_monitor_change = this.settings.connect( 'changed::target-monitor', (() => {
             this._process_windows();
@@ -128,9 +121,6 @@ export default class DimBackgroundWindowsExtension extends Extension {
             this._process_windows();
         }));
 
-        // Create a global display listener to react to new window events
-        this.on_window_created = global.display.connect( 'window-created', this._update_on_window_created.bind(this) );
-
         // Add a listener to react to the overview being shown/hidden
         this.on_shown_overview = Main.overview.connect( 'shown', (() => {
             this._process_windows();
@@ -145,12 +135,6 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
     // The function called when the extension is disabled
     disable() {
-
-        // Destroy the listener for new windows
-        if( this.on_window_created ) {
-            global.display.disconnect( this.on_window_created );
-            this.on_window_created = null;
-        }
 
         // Destroy the listeners for the overview
         if( this.on_shown_overview ) {
@@ -186,6 +170,12 @@ export default class DimBackgroundWindowsExtension extends Extension {
             this.on_tiled_windows_change = null;
         }
 
+        // Destroy the global display listener for the focus change
+        if( this.on_global_focus_change ) {
+            global.display.disconnect( this.on_global_focus_change );
+            this.on_global_focus_change = null;
+        }
+
         // Remove the toggle shortcut and its listener
         Main.wm.removeKeybinding( 'toggle-shortcut' );
         if( this.on_toggle_key ) {
@@ -195,14 +185,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
         // Loop on each window
         global.get_window_actors().forEach( ( window_actor ) => {
-            const meta_window = window_actor.get_meta_window();
-            // Remove the listener for the focus event
-            if( meta_window && meta_window._on_focus ) {
-                meta_window.disconnect( meta_window._on_focus );
-                delete meta_window._on_focus;
-            }
-
-            // Diconnect all listeners on this window
+            // Disable the dim effect on the window
             this._disable_window_dimming( window_actor );
         });
 
@@ -237,11 +220,6 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 return;
             }
 
-            // Add a listener to react on the window focus change, whether its type is dimmable or not
-            if( ! meta_window._on_focus ) {
-                meta_window._on_focus = meta_window.connect( 'focus', this._update_on_focus.bind( this ) );
-            }
-
             // Exit if the window is not dimmable 
             if( ! this._is_dimmable_type( meta_window ) ) {
                 return;
@@ -258,11 +236,18 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 * the window is tiled and the extension is configured to not dim those windows - note: the tiling status is not exposed to extensions, so we use the work area to determine if the window is tiled - this will be less hackish when this is implemented: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1395
                 * Note: Gnome 45.3 - as opposed to 45.2 and older - reports tiled windows correctly with the get_maximized() method, i.e. it returns 3 for maximized windows and 2 for vertically tiled windows (left or right) - apparently it's not possible to tile windows horizontally on top with Gnome 45.3, as it was possible with Gnome 45.2
             */
+
+            // Some debugging info
+            /*console.log( 'Window: ' + meta_window.get_title() + ' - Focus: ' + meta_window.has_focus() + ' - Above: ' + meta_window.is_above() + ' - Maximized: ' + meta_window.get_maximized() + ' - Tiled: ' + meta_window.get_maximized() + ' - Frame: ' + meta_window.get_frame_rect() + ' - Work area: ' + meta_window.get_work_area_current_monitor() );
+            console.log( 'Focus window: ' + ( meta_window === global.display.get_focus_window() ) );
+            console.log( 'Dimming enabled: ' + this.settings.get_boolean( 'dimming-enabled' ) + ' - Overview visible: ' + Main.overview.visible + ' - Target monitor: ' + this.settings.get_string( 'target-monitor' ) + ' - Always on top: ' + meta_window.is_above() + ' - Maximized: ' + meta_window.get_maximized() + ' - Tiled: ' + meta_window.get_maximized() + ' - Frame: ' + meta_window.get_frame_rect() + ' - Work area: ' + meta_window.get_work_area_current_monitor() );
+            console.log( 'Dim effect: ' + window_actor.get_effect( 'dim' ) );*/
+
             if( meta_window.has_focus() ||
                 this.settings.get_boolean( 'dimming-enabled' ) === false ||
                 Main.overview.visible ||
-                ( this.settings.get_string( 'target-monitor' ) === 'primary' && meta_window.is_on_primary_monitor() === 0 ) ||
-                ( this.settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() !== 0 ) ||
+                ( this.settings.get_string( 'target-monitor' ) === 'primary' && ! meta_window.is_on_primary_monitor() ) ||
+                ( this.settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() ) ||
                 ( this.settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() ) ||
                 ( this.settings.get_boolean( 'dim-maximized' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.BOTH ) ||
                 ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.HORIZONTAL ) ||
@@ -284,14 +269,18 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 )
             ) {
                 // Do we have the dim effect?
+                //console.log('Would disable dimming on window: ' + meta_window.get_title() );
                 if( window_actor.get_effect( 'dim' ) ) {
+                    //console.log('Disabling dimming on window: ' + meta_window.get_title() );
                     // Disconnect all listeners on this window
                     this._disable_window_dimming( window_actor );
                 }
             // None of the above conditions are met, so we want to dim the window
             } else {
+                //console.log('Would enable dimming on window: ' + meta_window.get_title() );
                 // Don't we have the dim effect?
                 if( ! window_actor.get_effect( 'dim' ) ) {
+                    //console.log('Enabling dimming on window: ' + meta_window.get_title() );
                     // Connect all listeners on this window
                     this._enable_window_dimming( window_actor );
                 }
@@ -333,19 +322,6 @@ export default class DimBackgroundWindowsExtension extends Extension {
             saturation = this.settings.get_double( 'saturation' );
         }
         return saturation;
-    }
-
-    // Focus event listener
-    _update_on_focus( target_window ) {
-        // Process all windows
-        // Note: the focus state change of a window affects the dimming of the window loosing focus
-        this._process_windows();
-    }
-
-    // New window event listener
-    _update_on_window_created( display, target_window ) {
-       // Add a focus event listener on the new window
-        target_window._on_focus = target_window.connect( 'focus', this._update_on_focus.bind( this ) );
     }
 
     // Function used to configure the dim effect - there is one per window - and to connect all listeners to the window

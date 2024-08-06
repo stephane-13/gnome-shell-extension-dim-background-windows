@@ -1,4 +1,4 @@
-# Gnome Shell Extension- Dim Background Windows - Version 15 for Gnome 45 and 46
+# Gnome Shell Extension- Dim Background Windows - Version 15 for Gnome 45, 46 and 47
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
@@ -12,6 +12,11 @@ This extension has been tested on:
 This extension shouldn't conflict with any other extension.
 It simply adds an effect - a GLSL fragment shader - to alter the brightness and saturation of background windows.
 It reacts on window creation and focus events as well as when the overview is shown or hidden. It doesn't do anything outside of those events.
+
+# Known issue
+
+Maximized windows don't get the dimming effect if a window on a different monitor gets the focus.
+There is currently no known fix for this problem.
 
 # Similar Extensions
 
@@ -38,6 +43,7 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
+- Version 16 : Gnome 45-46-47 - Added support for Gnome 47 and simplified windows focus detection
 - Version 15 : Gnome 45-46    - Added support for Gnome 46
 - Version 14 : Gnome 42 to 44 - Fixed startup error "this.interfaceSettings is undefined" (https://github.com/stephane-13/gnome-shell-extension-dim-background-windows/issues/21)
 - Version 13 : Gnome 45       - Bug fix release for tiled windows not handled correctly (https://github.com/stephane-13/gnome-shell-extension-dim-background-windows/issues/17)
