@@ -38,7 +38,7 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
-- Version 15 : Gnome 45-46    - Added support for Gnome 46
+- Version 15 : Gnome 45-47    - Added support for Gnome 47
 - Version 14 : Gnome 42 to 44 - Fixed startup error "this.interfaceSettings is undefined" (https://github.com/stephane-13/gnome-shell-extension-dim-background-windows/issues/21)
 - Version 13 : Gnome 45       - Bug fix release for tiled windows not handled correctly (https://github.com/stephane-13/gnome-shell-extension-dim-background-windows/issues/17)
 - Version 12 : Gnome 42 to 44 - Added options to control the dimming effect in night light mode and with dark style appearance
