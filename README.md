@@ -1,4 +1,4 @@
-# Gnome Shell Extension- Dim Background Windows - Version 15 for Gnome 45, 46 and 47
+# Gnome Shell Extension- Dim Background Windows - Version 16 for Gnome 45, 46 and 47
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
