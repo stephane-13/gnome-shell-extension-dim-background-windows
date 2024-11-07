@@ -398,6 +398,21 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         });
         tiledRow.add_suffix( tiledSwitch );
         groupOther.add( tiledRow );
+
+        // Create a toggle switch to enable or disable the dimming effect for the background
+        let backgroundSwitch = new Gtk.Switch( { halign: Gtk.Align.START, valign: Gtk.Align.CENTER, visible: true } );
+        // Set the switch value to the current value
+        backgroundSwitch.set_active( settings.get_boolean( 'dim-background' ) );
+        // Make the switch act on the actual value
+        backgroundSwitch.connect( 'notify::active', ( ( widget ) => {
+            settings.set_boolean( 'dim-background', widget.active );
+        }));
+        const backgroundRow = new Adw.ActionRow({
+            title: _( 'Apply the dimming effect to the background:' ),
+            subtitle: _( 'This applies to the desktop background if at least one window is visible' )
+        });
+        backgroundRow.add_suffix( backgroundSwitch );
+        groupOther.add( backgroundRow );
     }
 
 }

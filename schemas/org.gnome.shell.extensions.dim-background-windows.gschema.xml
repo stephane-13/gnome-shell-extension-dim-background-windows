@@ -59,27 +59,32 @@
     <key name="dimming-enabled" type="b">
       <default>true</default>
       <summary>Dimming effect status</summary>
-      <description>Control if the dimming effect is on or off while the extension is enabled. Used with the shortcut key above.</description>
+      <description>Controls if the dimming effect is on or off while the extension is enabled. Used with the shortcut key above.</description>
     </key>
     <key name="target-monitor" type="s">
       <default>"all"</default>
       <summary>Defines on which monitor(s) the dimming effect is enabled</summary>
-      <description>Control if the dimming effect is applied only to the primary monitor, only to the secondary monitor(s) or to all monitors.</description>
+      <description>Controls if the dimming effect is applied only to the primary monitor, only to the secondary monitor(s) or to all monitors.</description>
     </key>
     <key name="dim-always-on-top" type="b">
       <default>true</default>
       <summary>Allowing dimming of windows marked as always on top</summary>
-      <description>Control if the dimming effect is on or off for windows marked as always on top.</description>
+      <description>Controls if the dimming effect is on or off for windows marked as always on top.</description>
     </key>
     <key name="dim-maximized" type="b">
       <default>true</default>
       <summary>Allowing dimming of maximized windows</summary>
-      <description>Control if the dimming effect is on or off for maximized windows.</description>
+      <description>Controls if the dimming effect is on or off for maximized windows.</description>
     </key>
     <key name="dim-tiled" type="b">
       <default>true</default>
       <summary>Allowing dimming of tiled windows</summary>
-      <description>Control if the dimming effect is on or off for tiled windows.</description>
+      <description>Controls if the dimming effect is on or off for tiled windows.</description>
+    </key>
+    <key name="dim-background" type="b">
+      <default>false</default>
+      <summary>Dims background when extension is enabled</summary>
+      <description>Controls if the dimming effect is on or off for the backgroud image.</description>
     </key>
   </schema>
 </schemalist>

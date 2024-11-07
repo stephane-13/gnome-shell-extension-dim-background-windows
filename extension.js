@@ -78,6 +78,8 @@ export default class DimBackgroundWindowsExtension extends Extension {
         this.on_maximized_windows_change = null;
         // An object to store the listener for the tiled windows setting change
         this.on_tiled_windows_change = null;
+        // An object to store the listener for the background dimming setting change
+        this.on_background_change = null;
 
         // Enable the dimming effect, which could have been previsouly disabled by the keyboard shortcut
         this.settings.set_boolean( 'dimming-enabled', true );
@@ -118,6 +120,11 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
         // Add a listener to react to the tiled windows setting change
         this.on_tiled_windows_change = this.settings.connect( 'changed::dim-tiled', (() => {
+            this._process_windows();
+        }));
+
+        // Add a listener to react on the background dimming setting change
+        this.on_background_change = this.settings.connect( 'changed::dim-background', (() => {
             this._process_windows();
         }));
 
@@ -170,6 +177,12 @@ export default class DimBackgroundWindowsExtension extends Extension {
             this.on_tiled_windows_change = null;
         }
 
+        // Destroy the listener for the background dimming setting change
+        if( this.on_background_change ) {
+            this.settings.disconnect( this.on_background_change );
+            this.on_background_change = null;
+        }
+
         // Destroy the global display listener for the focus change
         if( this.on_global_focus_change ) {
             global.display.disconnect( this.on_global_focus_change );
@@ -208,8 +221,82 @@ export default class DimBackgroundWindowsExtension extends Extension {
         );
     }
 
+    // Function to get the number of open windows on a specific monitor
+    _get_num_displayed_windows_on_monitor( monitor_index ) {
+        // Get all currently open windows (non-minimized)
+        let windows = global.display.get_tab_list( Meta.TabList.NORMAL, null );
+
+        let count = 0;
+        windows.filter( ( window ) => {
+            if( window.is_hidden() ||
+                window.minimized ||
+                window.get_monitor() !== monitor_index
+            ) {
+                return false;
+            }
+            count++;
+            return true;
+        });
+
+        // Return the count of windows on this monitor
+        return count;
+    }
+
     // Process all windows to add/remove the dim effect
     _process_windows() {
+
+        // Get the background actor - this is shared by all monitors
+        const background_actor = Main.layoutManager._backgroundGroup;
+
+        // Loop on all monitors
+        // eslint-disable-next-line complexity
+        Main.layoutManager.monitors.forEach( ( monitor, monitor_index ) => {
+
+            // Get the number of displayed windows on this monitor (not hidden nor minimized)
+            const num_windows = this._get_num_displayed_windows_on_monitor( monitor_index );
+            //console.log('Monitor ' + monitor_index + ' - displayed windows: ' + num_windows);
+
+            // FInd the background actor for this monitor
+            // First get all background actors
+            let background_actors = background_actor.get_children();
+            //console.log('Background actors: ' + background_actors.length);
+            // Then find the one that is on this monitor
+            let monitor_background_actor = background_actors.find(actor => {
+                let actor_monitor_index = Main.layoutManager.monitors.findIndex(monitor => {
+                    return (
+                        actor.get_allocation_box().x1 >= monitor.x &&
+                        actor.get_allocation_box().x2 <= monitor.x + monitor.width &&
+                        actor.get_allocation_box().y1 >= monitor.y &&
+                        actor.get_allocation_box().y2 <= monitor.y + monitor.height
+                    );
+                });
+                return actor_monitor_index === monitor_index;
+            });
+
+            // We don't want to enable the dim effect on the background if:
+            // - the extension is internally toggled off
+            // - the overview is visible
+            // - there are no windows displayed
+            // - the monitor is the primary monitor and the extension is configured to dim only windows on secondary monitors
+            // - the monitor is a secondary monitor and the extension is configured to dim only windows on the primary monitor
+            // - the background dimming is disabled
+            if( this.settings.get_boolean( 'dimming-enabled' ) === false ||
+                Main.overview.visible ||
+                num_windows === 0 ||
+                ( this.settings.get_string( 'target-monitor' ) === 'primary' && monitor_index !== Main.layoutManager.primaryIndex ) ||
+                ( this.settings.get_string( 'target-monitor' ) === 'secondary' && monitor_index === Main.layoutManager.primaryIndex ) ||
+                this.settings.get_boolean( 'dim-background' ) === false ) {
+                // Disable the dim effect on the background
+                if( monitor_background_actor.get_effect( 'dim' ) ) {
+                    this._disable_window_dimming( monitor_background_actor );
+                }
+            } else {
+                // Enable the dim effect on the background
+                if( ! monitor_background_actor.get_effect( 'dim' ) ) {
+                    this._enable_window_dimming( monitor_background_actor );
+                }
+            }
+        });
 
         // Loop on all windows
         // eslint-disable-next-line complexity
