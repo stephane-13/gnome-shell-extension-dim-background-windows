@@ -280,20 +280,22 @@ export default class DimBackgroundWindowsExtension extends Extension {
             // - the monitor is the primary monitor and the extension is configured to dim only windows on secondary monitors
             // - the monitor is a secondary monitor and the extension is configured to dim only windows on the primary monitor
             // - the background dimming is disabled
-            if( this.settings.get_boolean( 'dimming-enabled' ) === false ||
-                Main.overview.visible ||
-                num_windows === 0 ||
-                ( this.settings.get_string( 'target-monitor' ) === 'primary' && monitor_index !== Main.layoutManager.primaryIndex ) ||
-                ( this.settings.get_string( 'target-monitor' ) === 'secondary' && monitor_index === Main.layoutManager.primaryIndex ) ||
-                this.settings.get_boolean( 'dim-background' ) === false ) {
-                // Disable the dim effect on the background
-                if( monitor_background_actor.get_effect( 'dim' ) ) {
-                    this._disable_window_dimming( monitor_background_actor );
-                }
-            } else {
-                // Enable the dim effect on the background
-                if( ! monitor_background_actor.get_effect( 'dim' ) ) {
-                    this._enable_window_dimming( monitor_background_actor );
+            if( monitor_background_actor !== undefined ) {
+                if (this.settings.get_boolean('dimming-enabled') === false ||
+                    Main.overview.visible ||
+                    num_windows === 0 ||
+                    (this.settings.get_string('target-monitor') === 'primary' && monitor_index !== Main.layoutManager.primaryIndex) ||
+                    (this.settings.get_string('target-monitor') === 'secondary' && monitor_index === Main.layoutManager.primaryIndex) ||
+                    this.settings.get_boolean('dim-background') === false) {
+                    // Disable the dim effect on the background
+                    if (monitor_background_actor.get_effect('dim')) {
+                        this._disable_window_dimming(monitor_background_actor);
+                    }
+                } else {
+                    // Enable the dim effect on the background
+                    if (!monitor_background_actor.get_effect('dim')) {
+                        this._enable_window_dimming(monitor_background_actor);
+                    }
                 }
             }
         });
