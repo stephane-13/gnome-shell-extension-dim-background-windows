@@ -5,7 +5,7 @@ The brightness and saturation of background windows can be tweaked in the extens
 # Compatibility
 
 This extension has been tested on:
- - Ubuntu 25.04 using Gnome 48.0 beta 3 / Wayland.
+ - Ubuntu 25.04 using Gnome 48.0 / Wayland.
  - Ubuntu 24.10 using Gnome 47.0 / Wayland.
  - Ubuntu 24.04 using Gnome 46.0 / Wayland.
  - Ubuntu 23.10 using Gnome 45.2 / Wayland.
@@ -45,6 +45,7 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
+- Version 18 : Gnome 45-48    - Bug fix release for non-existent monitor background actor
 - Version 17 : Gnome 45-48    - Added option to control background dimming (at least one window must be visible)
 - Version 16 : Gnome 45-46-47 - Added support for Gnome 47 and simplified windows focus detection
 - Version 15 : Gnome 45-46    - Added support for Gnome 46
