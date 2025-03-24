@@ -273,6 +273,11 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 return actor_monitor_index === monitor_index;
             });
 
+            // Skip if we don't find the background actor for this monitor
+            if( monitor_background_actor === undefined ) {
+                return;
+            }
+
             // We don't want to enable the dim effect on the background if:
             // - the extension is internally toggled off
             // - the overview is visible
