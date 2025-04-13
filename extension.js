@@ -4,7 +4,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
-// import the Gio library
+// import the Gio library to access settings like the night light and dark style
 import Gio from 'gi://Gio';
 
 export default class DimBackgroundWindowsExtension extends Extension {
@@ -17,39 +17,90 @@ export default class DimBackgroundWindowsExtension extends Extension {
         class DimWindowEffect extends Clutter.ShaderEffect {
             constructor( brightness, saturation ) {
                 super();
-                // set uniforms
+                // Define the brightness and saturation values to 100% (1.0) when the effect is created
+                this.start_brightness = 1.0;
+                this.target_brightness = brightness;
+                this.start_saturation = 1.0;
+                this.target_saturation = saturation;
+                this.transition_factor = 0.0;
+                this.brightness = this.start_brightness;
+                this.saturation = this.start_saturation;
+
+                this.set_uniform_value( 'brightness', this.brightness );
+                this.set_uniform_value( 'saturation', this.saturation );
+                // Set the texture uniform to the first texture unit
                 this.set_uniform_value( 'tex', 0 );
-                this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
-                this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
             }
 
             vfunc_get_static_shader_source() {
-                return ' \
-                    uniform sampler2D tex; \
-                    uniform float brightness; \
-                    uniform float saturation; \
-                    void main() { \
-                        vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); \
-                        color.rgb *= brightness; \
-                        float colorAvg = ( color.r + color.g + color.b ) / 3.0; \
-                        color.r = color.r - ( color.r - colorAvg ) * ( 1.0 - saturation ); \
-                        color.g = color.g - ( color.g - colorAvg ) * ( 1.0 - saturation ); \
-                        color.b = color.b - ( color.b - colorAvg ) * ( 1.0 - saturation ); \
-                        cogl_color_out = color * cogl_color_in; \
-                    } \
-                ';
+                return `
+                    uniform float brightness;
+                    uniform float saturation;
+                    uniform sampler2D tex;
+                    void main() {
+                        vec4 color = texture2D(tex, cogl_tex_coord_in[0].st);
+                        // Apply brightness
+                        color.rgb *= brightness;
+                        // Apply saturation
+                        float colorAvg = (color.r + color.g + color.b) / 3.0;
+                        color.r = color.r - (color.r - colorAvg) * (1.0 - saturation);
+                        color.g = color.g - (color.g - colorAvg) * (1.0 - saturation);
+                        color.b = color.b - (color.b - colorAvg) * (1.0 - saturation);
+                        gl_FragColor = color;
+                    }
+                `;
             }
 
             vfunc_paint_target(...params) {
               super.vfunc_paint_target(...params);
             }
 
-            set_brightness( brightness ) {
-                this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
+            set_target_brightness( new_target_brightness ) {
+                console.log( 'set_target_brightness: ' + new_target_brightness );
+                this.start_brightness = this.brightness;
+                this.target_brightness = new_target_brightness;
+                this.transition_factor = 0.0;
+                //this.set_uniform_value( 'brightness', parseFloat( new_target_brightness - 1e-6 ) );
+            }
+            set_target_saturation( new_target_saturation ) {
+                console.log( 'set_target_saturation: ' + new_target_saturation );
+                this.start_saturation = this.saturation;
+                this.target_saturation = new_target_saturation;
+                this.transition_factor = 0.0;
+                //this.set_uniform_value( 'saturation', parseFloat( new_target_saturation - 1e-6 ) );
             }
 
-            set_saturation( saturation ) {
-                this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
+            set_brightness( new_target_brightness ) {
+                console.log( 'set_brightness: ' + new_target_brightness );
+                this.start_brightness = new_target_brightness;
+                this.target_brightness = new_target_brightness;
+                this.transition_factor = 0.0;
+                this.set_uniform_value( 'brightness', parseFloat( new_target_brightness - 1e-6 ) );
+            }
+
+            set_saturation( new_target_saturation ) {
+                console.log( 'set_saturation: ' + new_target_saturation );
+                this.start_saturation = new_target_saturation;
+                this.target_saturation = new_target_saturation;
+                this.transition_factor = 0.0;
+                this.set_uniform_value( 'saturation', parseFloat( new_target_saturation - 1e-6 ) );
+            }
+
+            set_transition_factor( transition_factor ) {
+                // Set the transition factor to the new value
+                /*if( Math.abs( transition_factor - this.transition_factor ) < 0.2 ) {
+                    return;
+                }*/
+                this.transition_factor = transition_factor;
+                this.brightness = this.start_brightness + ( this.target_brightness - this.start_brightness ) * this.transition_factor;
+                this.saturation = this.start_saturation + ( this.target_saturation - this.start_saturation ) * this.transition_factor;
+                this.set_uniform_value( 'brightness', this.brightness );
+                this.set_uniform_value( 'saturation', this.saturation );
+                console.log( 't - Transition factor: ' + this.transition_factor );
+                console.log( 't - start brightness, target brightness, current brightness: ' + this.start_brightness + ' - ' + this.target_brightness + ' - ' + this.brightness );
+                //console.log( 't - start saturation, target saturation, current saturation: ' + this.start_saturation + ' - ' + this.target_saturation + ' - ' + this.saturation );
+                // queue a redraw of the actor
+                this.queue_repaint();
             }
         }
     );
@@ -70,6 +121,9 @@ export default class DimBackgroundWindowsExtension extends Extension {
         this.on_hidden_overview = null;
         // An object to store the listener for the toggle shortcut change
         this.on_toggle_key = null;
+
+        // An object to store the listener for the global focus change
+        this.on_global_focus_change = null;
         // An object to store the listener for the target monitor type change
         this.on_target_monitor_change = null;
         // An object to store the listener for the always-on-top setting change
@@ -199,7 +253,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
         // Loop on each window
         global.get_window_actors().forEach( ( window_actor ) => {
             // Disable the dim effect on the window
-            this._disable_window_dimming( window_actor );
+            this._disable_window_dimming_immediate( window_actor );
         });
 
         // Delete the settings objects
@@ -424,65 +478,134 @@ export default class DimBackgroundWindowsExtension extends Extension {
         window_actor._effect = effect;
         window_actor.add_effect_with_name( 'dim', effect );
 
+        // Create a new timeline to smooth the dimming effect
+        window_actor.timeline = new Clutter.Timeline({
+            duration: 1000,
+            repeat_count: 0,
+            actor: window_actor,
+        });
+
+        // Connect our timeline to the window actor effect, and store the connection id to disconnect it later
+        window_actor._timeline_connection = window_actor.timeline.connect( 'new-frame', (timeline, frameTime) => {
+            // If the actor doesn't exist anymore, we don't need to update the effect
+            if( window_actor === null ) {
+                return;
+            }
+            window_actor._effect.set_transition_factor( window_actor.timeline.get_progress() );
+            //console.log( window_actor );
+        });
+
+        window_actor.connect( 'destroy', () => {
+            if( window_actor.timeline ) {
+                window_actor.timeline.stop();
+                if( window_actor._timeline_connection ) {
+                    window_actor.timeline.disconnect( window_actor._timeline_connection );
+                    window_actor._timeline_connection = null;
+                }
+                if( window_actor._timeline_connection_complete ) {
+                    window_actor.timeline.disconnect( window_actor._timeline_connection_complete );
+                    window_actor._timeline_connection_complete = null;
+                }
+                window_actor.timeline = null;
+            }
+            this._disable_window_dimming_immediate( window_actor );
+        });
+
+        // Start the timeline
+        window_actor.timeline.start();
+
         // Listen to the brightness setting change
         window_actor._on_update_brightness = this.settings.connect( 'changed::brightness', () => {
-            effect.set_brightness( this._getBrightness() );
+            // Rewind the timeline - disabled, the induced lag while changing the brightness slider is annoying
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_brightness( this._getBrightness() );
+            //window_actor.timeline.start();
         });
 
         // Listen to the brightness night light override toggle setting change
         window_actor._on_update_brightness_night_light_override = this.settings.connect( 'changed::brightness-night-light-override', () => {
-            effect.set_brightness( this._getBrightness() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_brightness( this._getBrightness() );
+            //window_actor.timeline.start();
         });
         // Listen to the brightness night light setting change
         window_actor._on_update_brightness_night_light = this.settings.connect( 'changed::brightness-night-light', () => {
-            effect.set_brightness( this._getBrightness() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_brightness( this._getBrightness() );
+            //window_actor.timeline.start();
         });
         // Listen to the brightness dark style override toggle setting change
         window_actor._on_update_brightness_dark_style_override = this.settings.connect( 'changed::brightness-dark-style-override', () => {
-            effect.set_brightness( this._getBrightness() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_brightness( this._getBrightness() );
+            //window_actor.timeline.start();
         });
         // Listen to the brightness dark style setting change
         window_actor._on_update_brightness_night_light = this.settings.connect( 'changed::brightness-dark-style', () => {
-            effect.set_brightness( this._getBrightness() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_brightness( this._getBrightness() );
+            //window_actor.timeline.start();
         });
 
         // Listen to the saturation setting change
         window_actor._on_update_saturation = this.settings.connect( 'changed::saturation', () => {
-            effect.set_saturation( this._getSaturation() );
+            window_actor._effect.set_saturation( this._getSaturation() );
         });
 
         // Listen to the saturation night light override toggle setting change
         window_actor._on_update_saturation_night_light_override = this.settings.connect( 'changed::saturation-night-light-override', () => {
-            effect.set_saturation( this._getSaturation() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_saturation( this._getSaturation() );
+            //window_actor.timeline.start();
         });
         // Listen to the saturation night light setting change
         window_actor._on_update_saturation_night_light = this.settings.connect( 'changed::saturation-night-light', () => {
-            effect.set_saturation( this._getSaturation() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_saturation( this._getSaturation() );
+            //window_actor.timeline.start();
         });
         // Listen to the saturation dark style override toggle setting change
         window_actor._on_update_saturation_dark_style_override = this.settings.connect( 'changed::saturation-dark-style-override', () => {
-            effect.set_saturation( this._getSaturation() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_saturation( this._getSaturation() );
+            //window_actor.timeline.start();
         });
         // Listen to the saturation dark style setting change
         window_actor._on_update_saturation_dark_style = this.settings.connect( 'changed::saturation-dark-style', () => {
-            effect.set_saturation( this._getSaturation() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_saturation( this._getSaturation() );
+            //window_actor.timeline.start();
         });
 
         // Add a listener to react on the night light state change in the Gnome settings
         window_actor.on_night_light_change = this.gnomeSettings.connect( 'changed::night-light-enabled', (() => {
-            effect.set_brightness( this._getBrightness() );
-            effect.set_saturation( this._getSaturation() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor._effect.set_brightness( this._getBrightness() );
+            window_actor._effect.set_saturation( this._getSaturation() );
+            //window_actor.timeline.start();
         }));
 
         // Add a listener to react on the dark style appearance change in the Gnome settings
         window_actor.on_color_scheme_change = this.interfaceSettings.connect( 'changed::color-scheme', (() => {
-            effect.set_brightness( this._getBrightness() );
-            effect.set_saturation( this._getSaturation() );
+            // Rewind the timeline
+            //window_actor.timeline.rewind();
+            window_actor.set_brightness( this._getBrightness() );
+            window_actor.set_saturation( this._getSaturation() );
+            //window_actor.timeline.start();
         }));
     }
 
     // Function used to delete the window effect and to disconnect all listeners from the window
-    _disable_window_dimming( window_actor ) {
+    _disable_window_dimming_immediate( window_actor ) {
 
         // Remove the brightness update event listener
         if( window_actor._on_update_brightness ) {
@@ -550,6 +673,27 @@ export default class DimBackgroundWindowsExtension extends Extension {
             delete window_actor.on_night_light_change;
         }
 
+        // Destroy the timeline connection
+        if( window_actor._timeline_connection ) {
+            if( window_actor.timeline ) {
+              window_actor.timeline.disconnect( window_actor._timeline_connection );
+            }
+            delete window_actor._timeline_connection;
+        }
+
+        // Destroy the timeline connection for the completed event
+        if( window_actor._timeline_connection_complete ) {
+            if( window_actor.timeline ) {
+              window_actor.timeline.disconnect( window_actor._timeline_connection_complete );
+            }
+            delete window_actor._timeline_connection_complete;
+        }
+
+        // Destroy the timeline
+        if( window_actor.timeline ) {
+            delete window_actor.timeline;
+        }
+
         // Remove the dim effect
         if( window_actor.get_effect( 'dim' ) ) {
             window_actor.remove_effect_by_name( 'dim' );
@@ -559,5 +703,27 @@ export default class DimBackgroundWindowsExtension extends Extension {
             delete window_actor._effect;
         }
     }
-        
+
+    // Function used to delete the window effect and to disconnect all listeners from the window
+    // It will smoothlly disable the dimming effect before removing it
+    _disable_window_dimming( window_actor ) {
+        // TODO - consider removing some event handlers while the dimming effect is disabled
+        // Rewind the timeline
+        if( window_actor.timeline && window_actor._effect ) {
+            // Rewind the timeline
+            window_actor.timeline.rewind();
+            window_actor._effect.set_target_brightness( 1.0 );
+            window_actor._effect.set_target_saturation( 1.0 );
+            // Disable the dimming effect after the timeline duration
+            window_actor._timeline_connection_complete = window_actor.timeline.connect( 'completed', (() => {
+                this._disable_window_dimming_immediate( window_actor );
+                //console.log( 'Dimming effect disabled on window: ' + window_actor.get_meta_window().get_title() );
+            }));
+            window_actor.timeline.start();
+        } else {
+            // No timeline, so we can disable the dimming effect immediately
+            this._disable_window_dimming_immediate( window_actor );
+        }
+    }
+
 }
