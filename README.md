@@ -46,6 +46,7 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
+- Version 20 : Gnome 45-49    - Fixed GPU memory leak
 - Version 19 : Gnome 45-49    - Added support for Gnome 49
 - Version 18 : Gnome 45-48    - Bug fix release for non-existent monitor background actor
 - Version 17 : Gnome 45-48    - Added option to control background dimming (at least one window must be visible)
