@@ -199,7 +199,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
         // Loop on each window
         global.get_window_actors().forEach( ( window_actor ) => {
             // Disable the dim effect on the window
-            this._disable_window_dimming( window_actor );
+            this._disable_window_dimming( window_actor, true );
         });
 
         // Delete the settings objects
@@ -419,9 +419,15 @@ export default class DimBackgroundWindowsExtension extends Extension {
     // Function used to configure the dim effect - there is one per window - and to connect all listeners to the window
     _enable_window_dimming( window_actor ) {
 
-        // Create the dim effect
-        let effect = new this._DimWindowEffect( this._getBrightness(), this._getSaturation() );
-        window_actor._effect = effect;
+        // Create or reuse the dim effect
+        let effect = window_actor._effect;
+        if( ! effect ) {
+            effect = new this._DimWindowEffect( this._getBrightness(), this._getSaturation() );
+            window_actor._effect = effect;
+        } else {
+            effect.set_brightness( this._getBrightness() );
+            effect.set_saturation( this._getSaturation() );
+        }
         window_actor.add_effect_with_name( 'dim', effect );
 
         // Listen to the brightness setting change
@@ -482,7 +488,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
     }
 
     // Function used to delete the window effect and to disconnect all listeners from the window
-    _disable_window_dimming( window_actor ) {
+    _disable_window_dimming( window_actor, destroy_effect = false ) {
 
         // Remove the brightness update event listener
         if( window_actor._on_update_brightness ) {
@@ -550,12 +556,16 @@ export default class DimBackgroundWindowsExtension extends Extension {
             delete window_actor.on_night_light_change;
         }
 
-        // Remove the dim effect
+        // Detach the dim effect (keep for reuse)
         if( window_actor.get_effect( 'dim' ) ) {
             window_actor.remove_effect_by_name( 'dim' );
         }
-        // Delete the effect object for this window
-        if( window_actor._effect ) {
+
+        // Optionally destroy the effect object
+        if( destroy_effect && window_actor._effect ) {
+            if( typeof window_actor._effect.destroy === 'function' ) {
+                window_actor._effect.destroy();
+            }
             delete window_actor._effect;
         }
     }
