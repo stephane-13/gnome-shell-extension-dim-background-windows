@@ -86,5 +86,10 @@
       <summary>Dims background when extension is enabled</summary>
       <description>Controls if the dimming effect is on or off for the backgroud image.</description>
     </key>
+    <key name="dimming-exclude-regex" type="s">
+      <default>""</default>
+      <summary>Exclude windows by title regex matching</summary>
+      <description>Disables the dimming effect for windows with titles matching this regular expression.</description>
+    </key>
   </schema>
 </schemalist>

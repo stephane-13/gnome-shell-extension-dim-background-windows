@@ -312,6 +312,14 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 return;
             }
 
+            const window_title = meta_window.get_title?.() ?? '';
+            if( this._should_exclude_title( window_title ) ) {
+                if( window_actor.get_effect( 'dim' ) ) {
+                    this._disable_window_dimming( window_actor );
+                }
+                return;
+            }
+
             // Exit if the window is not dimmable 
             if( ! this._is_dimmable_type( meta_window ) ) {
                 return;
@@ -378,6 +386,19 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 }
             }
         });
+    }
+
+    // Determine if a window title should be excluded based on the regex setting
+    _should_exclude_title( window_title ) {
+        const pattern = this.settings.get_string( 'dimming-exclude-regex' );
+        if( ! pattern || pattern.trim() === '' ) {
+            return false;
+        }
+        try {
+            return new RegExp( pattern ).test( window_title );
+        } catch( _error ) {
+            return false;
+        }
     }
 
     // This function computes the brightness value to use depending on the night light and dark style settings
