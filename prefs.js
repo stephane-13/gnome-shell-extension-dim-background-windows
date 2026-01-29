@@ -413,6 +413,21 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         });
         backgroundRow.add_suffix( backgroundSwitch );
         groupOther.add( backgroundRow );
+
+        // Create a text entry to exclude windows by title regex
+        let excludeRegexEntry = new Gtk.Entry( { visible: true } );
+        excludeRegexEntry.set_text( settings.get_string( 'dimming-exclude-regex' ) );
+        excludeRegexEntry.set_hexpand( true );
+        excludeRegexEntry.connect( 'changed', ( ( widget ) => {
+            settings.set_string( 'dimming-exclude-regex', widget.get_text() );
+        }));
+
+        const excludeRegexRow = new Adw.ActionRow({
+            title: _( 'Exclude window titles (regex filter):' ),
+            subtitle: _( '<i><small>Example: Picture-in-Picture|VLC media</small></i>' )
+        });
+        excludeRegexRow.add_suffix( excludeRegexEntry );
+        groupOther.add( excludeRegexRow );
     }
 
 }
