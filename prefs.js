@@ -67,7 +67,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         // ========== BASE BRIGHTNESS CONTROL ==========
 
         // Create a brightness slider
-        let brightnessSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.01 );
+        let brightnessSlider = Gtk.Scale.new_with_range( Gtk.Orientation.HORIZONTAL, 0.1, 1.0, 0.01 );
         // Draw the numerical value while the slider is moved
         brightnessSlider.set_draw_value( true );
         // Make the slider use the window width
@@ -92,7 +92,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         // ========== NIGHT LIGHT BRIGHTNESS CONTROL ==========
 
         // Create a brightness factor slider for night light mode
-        let nightLightBrightnessSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.01 );
+        let nightLightBrightnessSlider = Gtk.Scale.new_with_range( Gtk.Orientation.HORIZONTAL, 0.1, 1.0, 0.01 );
         // Draw the numerical value while the slider is moved
         nightLightBrightnessSlider.set_draw_value( true );
         // Make the slider use the window width
@@ -131,7 +131,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         // ========== DARK STYLE APPEARANCE BRIGHTNESS CONTROL ==========
 
         // Create a brightness factor slider for dark style appearance
-        let darkStyleBrightnessSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.01 );
+        let darkStyleBrightnessSlider = Gtk.Scale.new_with_range( Gtk.Orientation.HORIZONTAL, 0.1, 1.0, 0.01 );
         // Draw the numerical value while the slider is moved
         darkStyleBrightnessSlider.set_draw_value( true );
         // Make the slider use the window width
@@ -181,7 +181,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         // ========== BASE SATURATION CONTROLS ==========
 
         // Create a saturation label and slider
-        let saturationSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.01 );
+        let saturationSlider = Gtk.Scale.new_with_range( Gtk.Orientation.HORIZONTAL, 0.0, 1.0, 0.01 );
         // Draw the numerical value while the slider is moved
         saturationSlider.set_draw_value( true );
         // Make the slider use the window width
@@ -206,7 +206,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         // ========== NIGHT LIGHT SATURATION CONTROL ==========
 
         // Create a saturation correction factor slider for night light mode
-        let nightLightSaturationSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.01 );
+        let nightLightSaturationSlider = Gtk.Scale.new_with_range( Gtk.Orientation.HORIZONTAL, 0.0, 1.0, 0.01 );
         // Draw the numerical value while the slider is moved
         nightLightSaturationSlider.set_draw_value( true );
         // Make the slider use the window width
@@ -245,7 +245,7 @@ export default class DimBackgroundWindowsExtensionPreferences extends ExtensionP
         // ========== DARK STYLE APPEARANCE SATURATION CONTROL ==========
 
         // Create a saturation correction factor slider for dark style appearance
-        let darkStyleSaturationSlider = Gtk.Scale.new_with_range( Gtk.GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.01 );
+        let darkStyleSaturationSlider = Gtk.Scale.new_with_range( Gtk.Orientation.HORIZONTAL, 0.0, 1.0, 0.01 );
         // Draw the numerical value while the slider is moved
         darkStyleSaturationSlider.set_draw_value( true );
         // Make the slider use the window width

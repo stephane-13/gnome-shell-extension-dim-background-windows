@@ -7,52 +7,49 @@ import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/ex
 // import the Gio library
 import Gio from 'gi://Gio';
 
-export default class DimBackgroundWindowsExtension extends Extension {
-
-    // The dim effect object
-    _DimWindowEffect = new GObject.registerClass(
-        {
-            GTypeName: 'DimWindowEffect',
-        },
-        class DimWindowEffect extends Clutter.ShaderEffect {
-            constructor( brightness, saturation ) {
-                super();
-                // set uniforms
-                this.set_uniform_value( 'tex', 0 );
-                this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
-                this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
-            }
-
-            vfunc_get_static_shader_source() {
-                return ' \
-                    uniform sampler2D tex; \
-                    uniform float brightness; \
-                    uniform float saturation; \
-                    void main() { \
-                        vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); \
-                        color.rgb *= brightness; \
-                        float colorAvg = ( color.r + color.g + color.b ) / 3.0; \
-                        color.r = color.r - ( color.r - colorAvg ) * ( 1.0 - saturation ); \
-                        color.g = color.g - ( color.g - colorAvg ) * ( 1.0 - saturation ); \
-                        color.b = color.b - ( color.b - colorAvg ) * ( 1.0 - saturation ); \
-                        cogl_color_out = color * cogl_color_in; \
-                    } \
-                ';
-            }
-
-            vfunc_paint_target(...params) {
-              super.vfunc_paint_target(...params);
-            }
-
-            set_brightness( brightness ) {
-                this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
-            }
-
-            set_saturation( saturation ) {
-                this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
-            }
+// The dim effect class is registered once at module scope to avoid GType
+// re-registration errors if the extension is reloaded within the same session.
+const DimWindowEffect = GObject.registerClass(
+    {
+        GTypeName: 'DimWindowEffect',
+    },
+    class DimWindowEffect extends Clutter.ShaderEffect {
+        constructor( brightness, saturation ) {
+            super();
+            // set uniforms
+            this.set_uniform_value( 'tex', 0 );
+            this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
+            this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
         }
-    );
+
+        vfunc_get_static_shader_source() {
+            return ' \
+                uniform sampler2D tex; \
+                uniform float brightness; \
+                uniform float saturation; \
+                void main() { \
+                    vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); \
+                    color.rgb *= brightness; \
+                    float colorAvg = ( color.r + color.g + color.b ) / 3.0; \
+                    color.r = color.r - ( color.r - colorAvg ) * ( 1.0 - saturation ); \
+                    color.g = color.g - ( color.g - colorAvg ) * ( 1.0 - saturation ); \
+                    color.b = color.b - ( color.b - colorAvg ) * ( 1.0 - saturation ); \
+                    cogl_color_out = color * cogl_color_in; \
+                } \
+            ';
+        }
+
+        set_brightness( brightness ) {
+            this.set_uniform_value( 'brightness', parseFloat( brightness - 1e-6 ) );
+        }
+
+        set_saturation( saturation ) {
+            this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
+        }
+    }
+);
+
+export default class DimBackgroundWindowsExtension extends Extension {
 
     // The function called when the extension is enabled / starts
     enable() {
@@ -80,6 +77,8 @@ export default class DimBackgroundWindowsExtension extends Extension {
         this.on_tiled_windows_change = null;
         // An object to store the listener for the background dimming setting change
         this.on_background_change = null;
+        // An object to store the listener for the exclude-regex setting change
+        this.on_exclude_regex_change = null;
 
         // Enable the dimming effect, which could have been previsouly disabled by the keyboard shortcut
         this.settings.set_boolean( 'dimming-enabled', true );
@@ -125,6 +124,11 @@ export default class DimBackgroundWindowsExtension extends Extension {
 
         // Add a listener to react on the background dimming setting change
         this.on_background_change = this.settings.connect( 'changed::dim-background', (() => {
+            this._process_windows();
+        }));
+
+        // Add a listener to react on the exclude-regex setting change
+        this.on_exclude_regex_change = this.settings.connect( 'changed::dimming-exclude-regex', (() => {
             this._process_windows();
         }));
 
@@ -181,6 +185,12 @@ export default class DimBackgroundWindowsExtension extends Extension {
         if( this.on_background_change ) {
             this.settings.disconnect( this.on_background_change );
             this.on_background_change = null;
+        }
+
+        // Destroy the listener for the exclude-regex setting change
+        if( this.on_exclude_regex_change ) {
+            this.settings.disconnect( this.on_exclude_regex_change );
+            this.on_exclude_regex_change = null;
         }
 
         // Destroy the global display listener for the focus change
@@ -332,9 +342,13 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 * the window is on the primary monitor and the extension is configured to dim only windows on secondary monitors
                 * the window is on a secondary monitor and the extension is configured to dim only windows on the primary monitor
                 * the window is marked as "always on top" and the extension is configured to not dim those windows
-                * the window is maximized and the extension is configured to not dim those windows
-                * the window is tiled and the extension is configured to not dim those windows - note: the tiling status is not exposed to extensions, so we use the work area to determine if the window is tiled - this will be less hackish when this is implemented: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/1395
-                * Note: Gnome 45.3 - as opposed to 45.2 and older - reports tiled windows correctly with the get_maximized() method, i.e. it returns 3 for maximized windows and 2 for vertically tiled windows (left or right) - apparently it's not possible to tile windows horizontally on top with Gnome 45.3, as it was possible with Gnome 45.2
+                * the window is fully maximized and the extension is configured to not dim those windows
+                * the window is tiled and the extension is configured to not dim those windows
+                *   Tiled detection uses _isWindowTiled() which combines:
+                *   - GNOME 45-48: Meta.MaximizeFlags.HORIZONTAL / VERTICAL from get_maximized()
+                *   - All versions: geometry comparison against the work area
+                *   Note: get_maximized() was removed in GNOME 49; is_maximized() and
+                *   _isWindowFullyMaximized() are used for full-maximize detection instead.
             */
 
             // Some debugging info
@@ -349,24 +363,8 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 ( this.settings.get_string( 'target-monitor' ) === 'primary' && ! meta_window.is_on_primary_monitor() ) ||
                 ( this.settings.get_string( 'target-monitor' ) === 'secondary' && meta_window.is_on_primary_monitor() ) ||
                 ( this.settings.get_boolean( 'dim-always-on-top' ) === false && meta_window.is_above() ) ||
-                ( this.settings.get_boolean( 'dim-maximized' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.BOTH ) ||
-                ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.HORIZONTAL ) ||
-                ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() === Meta.MaximizeFlags.VERTICAL ) ||
-                ( this.settings.get_boolean( 'dim-tiled' ) === false && meta_window.get_maximized() !== Meta.MaximizeFlags.BOTH &&
-                    (
-                        (
-                            meta_window.get_frame_rect().height === meta_window.get_work_area_current_monitor().height && (
-                                meta_window.get_frame_rect().x === meta_window.get_work_area_current_monitor().x ||
-                                meta_window.get_frame_rect().x - ( meta_window.get_work_area_current_monitor().x + meta_window.get_work_area_current_monitor().width / 2 ) <= 1
-                            )
-                        ) || (
-                            meta_window.get_frame_rect().width === meta_window.get_work_area_current_monitor().width && (
-                                meta_window.get_frame_rect().y === meta_window.get_work_area_current_monitor().y ||
-                                meta_window.get_frame_rect().y - ( meta_window.get_work_area_current_monitor().x + meta_window.get_work_area_current_monitor().height / 2 ) <= 1
-                            )
-                        )
-                    )
-                )
+                ( this.settings.get_boolean( 'dim-maximized' ) === false && this._isWindowFullyMaximized( meta_window ) ) ||
+                ( this.settings.get_boolean( 'dim-tiled' ) === false && this._isWindowTiled( meta_window ) )
             ) {
                 // Do we have the dim effect?
                 //console.log('Would disable dimming on window: ' + meta_window.get_title() );
@@ -386,6 +384,47 @@ export default class DimBackgroundWindowsExtension extends Extension {
                 }
             }
         });
+    }
+
+    // Returns true if the window is fully maximized (both horizontally and
+    // vertically). Uses is_maximized() on GNOME 46+ or a geometry comparison
+    // against the work area as a fallback for GNOME 45.
+    _isWindowFullyMaximized( meta_window ) {
+        if( typeof meta_window.is_maximized === 'function' ) {
+            return meta_window.is_maximized();
+        }
+        // Geometry-based fallback: window fills the entire work area.
+        const frame = meta_window.get_frame_rect();
+        const work  = meta_window.get_work_area_current_monitor();
+        return frame.x === work.x &&
+               frame.y === work.y &&
+               frame.width === work.width &&
+               frame.height === work.height;
+    }
+
+    // Returns true if the window is tiled (half-maximized: left, right, top
+    // or bottom). Uses geometry comparison against the work area.
+    _isWindowTiled( meta_window ) {
+        // A window is considered tiled if it occupies exactly half of the work
+        // area in one direction (left/right half or top/bottom half).
+        if( this._isWindowFullyMaximized( meta_window ) ) {
+            return false;
+        }
+        const frame = meta_window.get_frame_rect();
+        const work  = meta_window.get_work_area_current_monitor();
+        return (
+            (
+                frame.height === work.height && (
+                    frame.x === work.x ||
+                    frame.x - ( work.x + work.width / 2 ) <= 1
+                )
+            ) || (
+                frame.width === work.width && (
+                    frame.y === work.y ||
+                    frame.y - ( work.x + work.height / 2 ) <= 1
+                )
+            )
+        );
     }
 
     // Determine if a window title should be excluded based on the regex setting
@@ -443,7 +482,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
         // Create or reuse the dim effect
         let effect = window_actor._effect;
         if( ! effect ) {
-            effect = new this._DimWindowEffect( this._getBrightness(), this._getSaturation() );
+            effect = new DimWindowEffect( this._getBrightness(), this._getSaturation() );
             window_actor._effect = effect;
         } else {
             effect.set_brightness( this._getBrightness() );
