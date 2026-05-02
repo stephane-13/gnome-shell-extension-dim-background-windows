@@ -79,17 +79,22 @@ export default class DimBackgroundWindowsExtension extends Extension {
         this.on_background_change = null;
         // An object to store the listener for the exclude-regex setting change
         this.on_exclude_regex_change = null;
+        // An object to store the listener for the global focus change
+        this.on_global_focus_change = null;
 
         // Enable the dimming effect, which could have been previsouly disabled by the keyboard shortcut
         this.settings.set_boolean( 'dimming-enabled', true );
 
         // Create a global keybinding to toggle the extension dimming effect
+        // Defensively remove any stale binding left by a previously interrupted disable()
+        Main.wm.removeKeybinding( 'toggle-shortcut' );
         Main.wm.addKeybinding( 'toggle-shortcut', this.settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, (() => {
             this.settings.set_boolean( 'dimming-enabled', ! this.settings.get_boolean( 'dimming-enabled' ) );
             this._process_windows();
         }));
         // Need a listener to update the keybinding when it is changed in the preferences window
         this.on_toggle_key = this.settings.connect( 'changed::toggle-shortcut', (() => {
+            // Remove before re-adding to avoid duplicate/stale registrations
             Main.wm.removeKeybinding( 'toggle-shortcut' );
             Main.wm.addKeybinding( 'toggle-shortcut', this.settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, (() => {
                 this.settings.set_boolean( 'dimming-enabled', ! this.settings.get_boolean( 'dimming-enabled' ) );
@@ -212,6 +217,14 @@ export default class DimBackgroundWindowsExtension extends Extension {
             this._disable_window_dimming( window_actor, true );
         });
 
+        // Clean up any dim effects applied to background actors
+        const background_group = Main.layoutManager._backgroundGroup;
+        if( background_group ) {
+            background_group.get_children().forEach( ( background_actor ) => {
+                this._disable_window_dimming( background_actor, true );
+            });
+        }
+
         // Delete the settings objects
         this.interfaceSettings = null;
         this.gnomeSettings = null;
@@ -237,15 +250,14 @@ export default class DimBackgroundWindowsExtension extends Extension {
         let windows = global.display.get_tab_list( Meta.TabList.NORMAL, null );
 
         let count = 0;
-        windows.filter( ( window ) => {
+        windows.forEach( ( window ) => {
             if( window.is_hidden() ||
                 window.minimized ||
                 window.get_monitor() !== monitor_index
             ) {
-                return false;
+                return;
             }
             count++;
-            return true;
         });
 
         // Return the count of windows on this monitor
@@ -416,12 +428,12 @@ export default class DimBackgroundWindowsExtension extends Extension {
             (
                 frame.height === work.height && (
                     frame.x === work.x ||
-                    frame.x - ( work.x + work.width / 2 ) <= 1
+                    Math.abs( frame.x - ( work.x + work.width / 2 ) ) <= 1
                 )
             ) || (
                 frame.width === work.width && (
                     frame.y === work.y ||
-                    frame.y - ( work.x + work.height / 2 ) <= 1
+                    Math.abs( frame.y - ( work.y + work.height / 2 ) ) <= 1
                 )
             )
         );
@@ -508,7 +520,7 @@ export default class DimBackgroundWindowsExtension extends Extension {
             effect.set_brightness( this._getBrightness() );
         });
         // Listen to the brightness dark style setting change
-        window_actor._on_update_brightness_night_light = this.settings.connect( 'changed::brightness-dark-style', () => {
+        window_actor._on_update_brightness_dark_style = this.settings.connect( 'changed::brightness-dark-style', () => {
             effect.set_brightness( this._getBrightness() );
         });
 
