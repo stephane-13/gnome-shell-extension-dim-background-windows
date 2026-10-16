@@ -3,9 +3,13 @@ import GObject from 'gi://GObject';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
+import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 // import the Gio library
 import Gio from 'gi://Gio';
+
+const useShaderSnippet = parseInt( Config.PACKAGE_VERSION, 10 ) >= 51;
 
 // The dim effect class is registered once at module scope to avoid GType
 // re-registration errors if the extension is reloaded within the same session.
@@ -22,12 +26,14 @@ const DimWindowEffect = GObject.registerClass(
             this.set_uniform_value( 'saturation', parseFloat( saturation - 1e-6 ) );
         }
 
-        vfunc_get_static_shader_source() {
-            return ' \
+        // Only define the virtual function supported by the running Mutter.
+        [useShaderSnippet ? 'vfunc_get_static_snippet' : 'vfunc_get_static_shader_source']() {
+            const declarations = ' \
                 uniform sampler2D tex; \
                 uniform float brightness; \
                 uniform float saturation; \
-                void main() { \
+            ';
+            const code = ' \
                     vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); \
                     color.rgb *= brightness; \
                     float colorAvg = ( color.r + color.g + color.b ) / 3.0; \
@@ -35,8 +41,15 @@ const DimWindowEffect = GObject.registerClass(
                     color.g = color.g - ( color.g - colorAvg ) * ( 1.0 - saturation ); \
                     color.b = color.b - ( color.b - colorAvg ) * ( 1.0 - saturation ); \
                     cogl_color_out = color * cogl_color_in; \
-                } \
             ';
+
+            if( useShaderSnippet ) {
+                const snippet = Cogl.Snippet.new( Cogl.SnippetHook.FRAGMENT, declarations, null );
+                snippet.set_replace( code );
+                return snippet;
+            }
+
+            return `${declarations}\nvoid main() {\n${code}\n}`;
         }
 
         set_brightness( brightness ) {

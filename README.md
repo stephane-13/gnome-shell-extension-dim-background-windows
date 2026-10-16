@@ -1,12 +1,15 @@
-# Gnome Shell Extension- Dim Background Windows - Version 24 for Gnome 45 to 51
+# Gnome Shell Extension- Dim Background Windows - Version 25 for Gnome 45 to 51
 A gnome shell extension dimming background / non-focused windows.
 The brightness and saturation of background windows can be tweaked in the extension preferences.
 
 # Compatibility
 
+Gnome 51 uses the new Cogl snippet shader API; Gnome 45-50 retain the legacy shader API.
+The extension selects the appropriate API when it loads.
+
 This extension has been tested on:
- - Gnome 51 compatibility target (runtime testing pending).
- - Ubuntu 26.04 (development version) using Gnome 50.0 / Wayland.
+ - Ubuntu 26.10 using Gnome 51.0 / Wayland.
+ - Ubuntu 26.04 using Gnome 50.0 / Wayland.
  - Ubuntu 25.10 using Gnome 49.0 / Wayland.
  - Ubuntu 25.04 using Gnome 48.0 / Wayland.
  - Ubuntu 24.10 using Gnome 47.0 / Wayland.
@@ -48,8 +51,8 @@ This will generate the zip file above, which can then be installed (use the --fo
 Logout / login is usually required to see the code changes effect.
 
 # Versions History
-- Version 24 : Gnome 45-51    - Added support for Gnome 51
-- Version 23 : Gnome 45-50    - Fixed recursion error
+- Version 25 : Gnome 45-51    - Ported the shader effect to the Gnome 51 API while preserving Gnome 45-50 support (Gnome 51 runtime testing pending)
+- Version 24 : Gnome 45-50    - Fixed recursion error
 - Version 22 : Gnome 45-50    - Added support for Gnome 50
 - Version 21 : Gnome 45-49    - Added option to prevent dimming of Windows with title matching regular expression
 - Version 20 : Gnome 45-49    - Fixed GPU memory leak
